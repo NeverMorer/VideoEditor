@@ -1,0 +1,209 @@
+package com.religion76.mediaexecutor.coder
+
+import android.media.MediaCodec
+import android.media.MediaExtractor
+import android.media.MediaFormat
+import android.os.Build
+import android.util.Log
+import io.reactivex.Observable
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.Disposable
+import io.reactivex.schedulers.Schedulers
+import java.nio.ByteBuffer
+import java.util.concurrent.TimeUnit
+
+/**
+ * Created by SunChao
+ * on 2018/3/3.
+ */
+class VideoDecoder {
+
+    companion object {
+        private val TAG = "MediaCoder_Decoder"
+    }
+
+
+    private val DEFAULT_QUEUE_TIMEOUT = 10000L
+
+    private val extractor: MediaExtractor by lazy {
+        MediaExtractor()
+    }
+
+
+    private lateinit var decoder: MediaCodec
+
+
+    private fun getInputBuffer(index: Int): ByteBuffer {
+        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+            decoder.inputBuffers[index]
+        } else {
+            decoder.getInputBuffer(index)
+        }
+    }
+
+
+    private fun getOutBuffer(index: Int): ByteBuffer {
+        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+            outputBuffers[index]
+        } else {
+            decoder.getOutputBuffer(index)
+        }
+    }
+
+    private lateinit var outputBuffers: Array<ByteBuffer>
+
+    var onOutputBufferGenerate: ((outputBuffer: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) -> Unit)? = null
+
+
+    private fun configure(mediaFormat: MediaFormat) {
+        Log.d(TAG, "on decoder configured $mediaFormat")
+        decoder = MediaCodec.createDecoderByType(mediaFormat.getString(MediaFormat.KEY_MIME))
+        decoder.configure(mediaFormat, null, null, 0)
+        decoder.start()
+    }
+
+    var onSampleFormatConfirmed: ((MediaFormat) -> Unit)? = null
+
+    fun decode(path: String) {
+
+        extractor.setDataSource(path)
+
+        inputDisposable = Observable.range(0, extractor.trackCount)
+                .filter { extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME).startsWith("video") }
+                .flatMap {
+                    val sampleMediaFormat = extractor.getTrackFormat(it)
+                    Log.d(TAG, "decode format:${sampleMediaFormat}")
+                    extractor.selectTrack(it)
+                    configure(sampleMediaFormat)
+                    onSampleFormatConfirmed?.invoke(sampleMediaFormat)
+
+                    startDecode()
+
+                    Observable.interval(50, TimeUnit.MILLISECONDS)
+                            .map {
+                                val inputBufferIndex = decoder.dequeueInputBuffer(DEFAULT_QUEUE_TIMEOUT)
+                                if (inputBufferIndex >= 0) {
+                                    val inputBuffer = getInputBuffer(inputBufferIndex)
+                                    val sampleSize = extractor.readSampleData(inputBuffer, 0)
+                                    if (sampleSize < 0) {
+                                        Log.d(TAG, "InputBuffer BUFFER_FLAG_END_OF_STREAM")
+                                        decoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                                        true
+                                    } else {
+                                        //here to filter sample data by limit duration
+                                        Log.d(TAG, "InputBuffer queueInputBuffer")
+                                        decoder.queueInputBuffer(inputBufferIndex, 0, sampleSize, extractor.sampleTime, 0)
+                                        extractor.advance()
+                                        false
+                                    }
+                                } else {
+                                    false
+                                }
+                            }
+                }
+                .subscribeOn(Schedulers.computation())
+                .subscribe({
+                    if (it) {
+                        inputDisposable.dispose()
+                    }
+                }, { t: Throwable? ->
+                    t?.printStackTrace()
+                })
+
+    }
+
+    private fun startDecode() {
+
+//        Observable.create<Boolean> {
+//
+//
+//            while (true) {
+//                val outputBufferIndex = decoder.dequeueOutputBuffer(bufferInfo, DEFAULT_QUEUE_TIMEOUT)
+//                when (outputBufferIndex) {
+//                    MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED -> {
+//                        Log.d(TAG, "INFO_OUTPUT_BUFFERS_CHANGED")
+//                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+//                            outputBuffers = decoder.outputBuffers
+//                        }
+//                    }
+//                    MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
+//                        Log.d(TAG, "INFO_OUTPUT_FORMAT_CHANGED")
+//
+//                    }
+//                    MediaCodec.INFO_TRY_AGAIN_LATER -> {
+//                        Log.d(TAG, "INFO_TRY_AGAIN_LATER")
+//                    }
+//                    else -> {
+//                        Log.d(TAG, "generate sample data")
+//                        val outBuffer = getOutBuffer(outputBufferIndex)
+//                        onOutputBufferGenerate?.invoke(outBuffer.array())
+//                    }
+//                }
+//
+//
+//                if (bufferInfo.flags.and(MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+//                    it.onNext(true)
+//                    it.onComplete()
+//                    break
+//                }
+//            }
+//        }
+//                .subscribeOn(Schedulers.computation())
+//                .observeOn(AndroidSchedulers.mainThread())
+//                .subscribe({
+//
+//                }, { t: Throwable? ->
+//                    t?.printStackTrace()
+//                })
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+            outputBuffers = decoder.outputBuffers
+        }
+
+        outputDisposable = Observable.interval(50, TimeUnit.MILLISECONDS)
+                .map {
+                    val bufferInfo = MediaCodec.BufferInfo()
+                    val outputBufferIndex = decoder.dequeueOutputBuffer(bufferInfo, DEFAULT_QUEUE_TIMEOUT)
+                    when (outputBufferIndex) {
+                        MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED -> {
+                            Log.d(TAG, "encoder output INFO_OUTPUT_BUFFERS_CHANGED")
+                            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+                                outputBuffers = decoder.outputBuffers
+                            }
+                        }
+                        MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
+                            Log.d(TAG, "encoder output INFO_OUTPUT_FORMAT_CHANGED")
+                        }
+                        MediaCodec.INFO_TRY_AGAIN_LATER -> {
+                            Log.d(TAG, "encoder output INFO_TRY_AGAIN_LATER")
+                        }
+                        else -> {
+                            Log.d(TAG, "encoder output generate sample data")
+                            val outBuffer = getOutBuffer(outputBufferIndex)
+                            onOutputBufferGenerate?.invoke(outBuffer, bufferInfo)
+                            decoder.releaseOutputBuffer(outputBufferIndex, false)
+                        }
+                    }
+
+                    bufferInfo.flags.and(MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0
+                }
+                .subscribeOn(Schedulers.computation())
+                .subscribe({
+                    if (it) {
+                        Log.d(TAG, "decode_completed")
+                        outputDisposable.dispose()
+                    }
+                }, { t: Throwable? ->
+                    t?.printStackTrace()
+                })
+    }
+
+
+    private lateinit var inputDisposable: Disposable
+    private lateinit var outputDisposable: Disposable
+
+    fun release() {
+        decoder.release()
+    }
+
+}
