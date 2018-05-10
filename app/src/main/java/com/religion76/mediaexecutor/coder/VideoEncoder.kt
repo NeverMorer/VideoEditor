@@ -21,20 +21,17 @@ class VideoEncoder {
 
     private lateinit var encoder: MediaCodec
 
-    private var isMuxerStart = false
-
-    private var trackIndex = -1
-
     fun prepare(mediaConfig: MediaConfig) {
-        val videoFormat = MediaFormat.createVideoFormat(mediaConfig.mineType, mediaConfig.width, mediaConfig.height)
-        videoFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar)
-        videoFormat.setInteger(MediaFormat.KEY_BIT_RATE, mediaConfig.getCalBitrate())
-        videoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, mediaConfig.frameRate)
-        videoFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, mediaConfig.iFrameInterval)
-
-        Log.d(TAG, "on encoder configured $videoFormat")
 
         encoder = MediaCodec.createEncoderByType(mediaConfig.mineType)
+
+        val videoFormat = MediaFormat.createVideoFormat(mediaConfig.mineType, mediaConfig.width, mediaConfig.height)
+        videoFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, CodecFormatUtils.getVideoCompatibilityColorFormat(encoder.codecInfo, mediaConfig.mineType))
+        videoFormat.setInteger(MediaFormat.KEY_BIT_RATE, mediaConfig.getCompressBitrate().toInt())
+        videoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, mediaConfig.frameRate)
+        videoFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, mediaConfig.iFrameInterval)
+        Log.d(TAG, "on encoder configured $videoFormat")
+
         encoder.configure(videoFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
         encoder.start()
 

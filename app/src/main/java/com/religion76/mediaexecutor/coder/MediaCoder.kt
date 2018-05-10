@@ -47,6 +47,8 @@ class MediaCoder {
                 val mediaConfig = MediaConfig()
                 mediaConfig.width = mediaFormat.getInteger(MediaFormat.KEY_WIDTH)
                 mediaConfig.height = mediaFormat.getInteger(MediaFormat.KEY_HEIGHT)
+                mediaConfig.duration = mediaFormat.getLong(MediaFormat.KEY_DURATION)
+                mediaConfig.path = path
                 videoEncoder.prepare(mediaConfig)
             }
         }

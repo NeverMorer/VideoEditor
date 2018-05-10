@@ -9,6 +9,7 @@ import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
+import kotlinx.coroutines.experimental.async
 import java.nio.ByteBuffer
 import java.util.concurrent.TimeUnit
 
@@ -16,7 +17,7 @@ import java.util.concurrent.TimeUnit
  * Created by SunChao
  * on 2018/3/3.
  */
-class VideoDecoder {
+class VideoDecoder{
 
     companion object {
         private val TAG = "MediaCoder_Decoder"
@@ -110,7 +111,9 @@ class VideoDecoder {
                     t?.printStackTrace()
                 })
 
+
     }
+
 
     private fun startDecode() {
 
@@ -203,6 +206,7 @@ class VideoDecoder {
     private lateinit var outputDisposable: Disposable
 
     fun release() {
+        extractor.release()
         decoder.release()
     }
 
