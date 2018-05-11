@@ -21,6 +21,9 @@ class VideoEncoder {
 
     private lateinit var encoder: MediaCodec
 
+    @Volatile
+    private var isEncodeFinish = false
+
     fun prepare(mediaConfig: MediaConfig) {
 
         encoder = MediaCodec.createEncoderByType(mediaConfig.mineType)
@@ -112,11 +115,21 @@ class VideoEncoder {
             }
         }.subscribeOn(Schedulers.computation())
                 .subscribe {
+                    isEncodeFinish = true
                     onEncoderCompleted?.invoke()
                 }
     }
 
+    fun queueEOS(){
+        Log.d(TAG, "------------- encoder queueEOS ------------")
+        val inputBufferIndex = encoder.dequeueInputBuffer(-1)
+        encoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+    }
+
     fun offerData(data: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) {
+        if (isEncodeFinish){
+            return
+        }
         val inputBufferIndex = encoder.dequeueInputBuffer(-1)
         if (inputBufferIndex > 0) {
             val inputBuffer = getInputBuffer(inputBufferIndex)
@@ -127,7 +140,6 @@ class VideoEncoder {
                 encoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
             } else {
                 encoder.queueInputBuffer(inputBufferIndex, bufferInfo.offset, bufferInfo.size, bufferInfo.presentationTimeUs, bufferInfo.flags)
-
             }
         }
     }

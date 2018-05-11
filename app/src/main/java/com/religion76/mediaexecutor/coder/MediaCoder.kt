@@ -34,7 +34,7 @@ class MediaCoder {
 
     private val muxer = MediaMuxer(FILE_PATH, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
 
-    fun start(path: String) {
+    fun start(path: String, startMs: Long = 0, endMs: Long = 0) {
         filePath = path
 
         videoDecoder.onOutputBufferGenerate = { buffer, bufferInfo ->
@@ -43,28 +43,38 @@ class MediaCoder {
         }
 
         videoDecoder.onSampleFormatConfirmed = { mediaFormat ->
-            handler.post {
-                val mediaConfig = MediaConfig()
-                mediaConfig.width = mediaFormat.getInteger(MediaFormat.KEY_WIDTH)
-                mediaConfig.height = mediaFormat.getInteger(MediaFormat.KEY_HEIGHT)
-                mediaConfig.duration = mediaFormat.getLong(MediaFormat.KEY_DURATION)
-                mediaConfig.path = path
-                videoEncoder.prepare(mediaConfig)
-            }
+            val mediaConfig = MediaConfig()
+            mediaConfig.width = mediaFormat.getInteger(MediaFormat.KEY_WIDTH)
+            mediaConfig.height = mediaFormat.getInteger(MediaFormat.KEY_HEIGHT)
+            mediaConfig.duration = mediaFormat.getLong(MediaFormat.KEY_DURATION)
+            mediaConfig.path = path
+            videoEncoder.prepare(mediaConfig)
+        }
+
+        videoDecoder.onDecodeFinish = {
+            Log.d(TAG, "--------------------------- videoDecoder onDecoderCompleted ---------------------------")
+            videoDecoder.release()
         }
 
         videoEncoder.onSampleEncode = { byteBuffer, bufferInfo ->
             Log.d(TAG, "videoEncoder onSampleEncode  trackIndex$trackIndex")
-            if (!isMuxerReady){
+            if (!isMuxerReady) {
                 trackIndex = muxer.addTrack(videoEncoder.getOutputFormat())
                 muxer.start()
                 isMuxerReady = true
             }
-            muxer.writeSampleData(trackIndex,  byteBuffer, bufferInfo)
+
+            if (bufferInfo.presentationTimeUs > endMs * 1000) {
+                Log.d("MediaCoder", "----------------------------- mux finish -----------------------------")
+                videoDecoder.queueEOS()
+                videoEncoder.queueEOS()
+            } else {
+                muxer.writeSampleData(trackIndex, byteBuffer, bufferInfo)
+            }
         }
 
         videoEncoder.onEncoderCompleted = {
-            Log.d(TAG, "videoEncoder onEncoderCompleted")
+            Log.d(TAG, "--------------------------- videoEncoder onEncoderCompleted ---------------------------")
             release()
         }
 
@@ -72,15 +82,13 @@ class MediaCoder {
             Log.d(TAG, "encoder output format" + it)
         }
 
-        videoDecoder.decode(filePath)
+        videoDecoder.decode(filePath, startMs)
     }
 
-    fun release() {
+    private fun release() {
         muxer.stop()
         muxer.release()
-        videoDecoder.release()
         videoEncoder.release()
-//        muxer.release()
     }
 
 }

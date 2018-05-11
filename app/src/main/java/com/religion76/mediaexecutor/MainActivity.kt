@@ -31,7 +31,7 @@ class MainActivity : AppCompatActivity() {
         lvVideos.adapter = adapter
         lvVideos.setOnItemClickListener { parent, view, position, id ->
             val mediaCoder = MediaCoder()
-            mediaCoder.start(view.tvPath.text.toString())
+            mediaCoder.start(view.tvPath.text.toString(),2000, 6000)
         }
 
     }
