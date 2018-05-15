@@ -120,14 +120,14 @@ class VideoEncoder {
                 }
     }
 
-    fun queueEOS(){
+    fun queueEOS() {
         Log.d(TAG, "------------- encoder queueEOS ------------")
         val inputBufferIndex = encoder.dequeueInputBuffer(-1)
         encoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
     }
 
     fun offerData(data: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) {
-        if (isEncodeFinish){
+        if (isEncodeFinish) {
             return
         }
         val inputBufferIndex = encoder.dequeueInputBuffer(-1)
@@ -140,6 +140,25 @@ class VideoEncoder {
                 encoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
             } else {
                 encoder.queueInputBuffer(inputBufferIndex, bufferInfo.offset, bufferInfo.size, bufferInfo.presentationTimeUs, bufferInfo.flags)
+            }
+        }
+    }
+
+    fun offerData(data: ByteBuffer, sampleSize: Int, presentationTimeUs: Long) {
+        if (isEncodeFinish) {
+            return
+        }
+
+        val inputBufferIndex = encoder.dequeueInputBuffer(-1)
+        if (inputBufferIndex > 0) {
+            val inputBuffer = getInputBuffer(inputBufferIndex)
+
+            inputBuffer.clear()
+            inputBuffer.put(data)
+            if (bufferInfo.size < 0) {
+                encoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+            } else {
+                encoder.queueInputBuffer(inputBufferIndex, 0, sampleSize, presentationTimeUs, 0)
             }
         }
     }

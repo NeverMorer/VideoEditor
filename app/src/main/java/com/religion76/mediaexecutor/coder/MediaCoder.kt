@@ -82,7 +82,7 @@ class MediaCoder {
             Log.d(TAG, "encoder output format" + it)
         }
 
-        videoDecoder.decode(filePath, startMs)
+        videoDecoder.decode(filePath, null, startMs)
     }
 
     private fun release() {

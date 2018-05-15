@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.provider.MediaStore
 import android.support.v4.widget.SimpleCursorAdapter
 import com.religion76.mediaexecutor.coder.MediaCoder
+import com.religion76.mediaexecutor.coder.VideoDecoder
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.item_video.view.*
 
@@ -28,10 +29,13 @@ class MainActivity : AppCompatActivity() {
 
         val adapter = SimpleCursorAdapter(this, R.layout.item_video, cursor, arrayOf(MediaStore.Video.Media.DATA), intArrayOf(R.id.tvPath))
 
+        VideoDecoder().decode("/storage/sdcard1/DCIM/Video/V80102-223718.mp4", 1000)
+
         lvVideos.adapter = adapter
         lvVideos.setOnItemClickListener { parent, view, position, id ->
             val mediaCoder = MediaCoder()
             mediaCoder.start(view.tvPath.text.toString(),2000, 6000)
+//            ExtractMpegFramesTest().testExtractMpegFrames(view.tvPath.text.toString())
         }
 
     }

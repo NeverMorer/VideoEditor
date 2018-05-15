@@ -12,7 +12,7 @@ class MediaConfig {
     val BPP = 0.3f
 
     val frameRate = 30
-    val iFrameInterval = 10
+    val iFrameInterval = 1
     val numFrames = 300
     val mineType = "video/avc"
     var bitRate = 300000
