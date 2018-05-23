@@ -1,15 +1,13 @@
-package com.religion76.mediaexecutor.executor
+package com.religion76.videoexecutor.executor
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import io.reactivex.Observable
-import io.reactivex.Scheduler
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
 import java.nio.ByteBuffer
-import java.util.*
 
 /**
  * Created by SunChao

@@ -1,11 +1,22 @@
-package com.religion76.mediaexecutor;
+package com.religion76.videoexecutor;
 
-/**
- * Created by SunChao
- * on 2018/5/15.
+/*
+ * Copyright 2013 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
-import android.annotation.SuppressLint;
+
 import android.graphics.Bitmap;
 import android.graphics.SurfaceTexture;
 import android.media.MediaCodec;
@@ -34,24 +45,6 @@ import javax.microedition.khronos.egl.EGLContext;
 import javax.microedition.khronos.egl.EGLDisplay;
 import javax.microedition.khronos.egl.EGLSurface;
 
-/*
- * Copyright 2013 The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-
-
 //20131122: minor tweaks to saveFrame() I/O
 //20131205: add alpha to EGLConfig (huge glReadPixels speedup); pre-allocate pixel buffers;
 //          log time to run saveFrame()
@@ -68,17 +61,16 @@ import javax.microedition.khronos.egl.EGLSurface;
  * (This was derived from bits and pieces of CTS tests, and is packaged as such, but is not
  * currently part of CTS.)
  */
-@SuppressLint("NewApi")
-class ExtractMpegFramesTest extends AndroidTestCase {
+public class ExtractMpegFramesTest extends AndroidTestCase {
     private static final String TAG = "ExtractMpegFramesTest";
-    private static final boolean VERBOSE = false;           // lots of logging
+    private static final boolean VERBOSE = true;           // lots of logging
 
     // where to find files (note: requires WRITE_EXTERNAL_STORAGE permission)
     private static final File FILES_DIR = Environment.getExternalStorageDirectory();
     private static final String INPUT_FILE = "source.mp4";
     private static final int MAX_FRAMES = 10;       // stop extracting after this many
 
-    private String path;
+    String path;
     /**
      * test entry point
      */
@@ -552,37 +544,37 @@ class ExtractMpegFramesTest extends AndroidTestCase {
          * Saves the current frame to disk as a PNG image.
          */
         public void saveFrame(String filename) throws IOException {
-//             glReadPixels gives us a ByteBuffer filled with what is essentially big-endian RGBA
-//             data (i.e. a byte of red, followed by a byte of green...).  To use the Bitmap
-//             constructor that takes an int[] array with pixel data, we need an int[] filled
-//             with little-endian ARGB data.
-//
-//             If we implement this as a series of buf.get() calls, we can spend 2.5 seconds just
-//             copying data around for a 720p frame.  It's better to do a bulk get() and then
-//             rearrange the data in memory.  (For comparison, the PNG compress takes about 500ms
-//             for a trivial frame.)
-//
-//             So... we set the ByteBuffer to little-endian, which should turn the bulk IntBuffer
-//             get() into a straight memcpy on most Android devices.  Our ints will hold ABGR data.
-//             Swapping B and R gives us ARGB.  We need about 30ms for the bulk get(), and another
-//             270ms for the color swap.
-//
-//             We can avoid the costly B/R swap here if we do it in the fragment shader (see
-//             http://stackoverflow.com/questions/21634450/ ).
-//
-//             Having said all that... it turns out that the Bitmap#copyPixelsFromBuffer()
-//             method wants RGBA pixels, not ARGB, so if we create an empty bitmap and then
-//             copy pixel data in we can avoid the swap issue entirely, and just copy straight
-//             into the Bitmap from the ByteBuffer.
-//
-//             Making this even more interesting is the upside-down nature of GL, which means
-//             our output will look upside-down relative to what appears on screen if the
-//             typical GL conventions are used.  (For ExtractMpegFrameTest, we avoid the issue
-//             by inverting the frame when we render it.)
-//
-//             Allocating large buffers is expensive, so we really want mPixelBuf to be
-//             allocated ahead of time if possible.  We still get some allocations from the
-//             Bitmap / PNG creation.
+            // glReadPixels gives us a ByteBuffer filled with what is essentially big-endian RGBA
+            // data (i.e. a byte of red, followed by a byte of green...).  To use the Bitmap
+            // constructor that takes an int[] array with pixel data, we need an int[] filled
+            // with little-endian ARGB data.
+            //
+            // If we implement this as a series of buf.get() calls, we can spend 2.5 seconds just
+            // copying data around for a 720p frame.  It's better to do a bulk get() and then
+            // rearrange the data in memory.  (For comparison, the PNG compress takes about 500ms
+            // for a trivial frame.)
+            //
+            // So... we set the ByteBuffer to little-endian, which should turn the bulk IntBuffer
+            // get() into a straight memcpy on most Android devices.  Our ints will hold ABGR data.
+            // Swapping B and R gives us ARGB.  We need about 30ms for the bulk get(), and another
+            // 270ms for the color swap.
+            //
+            // We can avoid the costly B/R swap here if we do it in the fragment shader (see
+            // http://stackoverflow.com/questions/21634450/ ).
+            //
+            // Having said all that... it turns out that the Bitmap#copyPixelsFromBuffer()
+            // method wants RGBA pixels, not ARGB, so if we create an empty bitmap and then
+            // copy pixel data in we can avoid the swap issue entirely, and just copy straight
+            // into the Bitmap from the ByteBuffer.
+            //
+            // Making this even more interesting is the upside-down nature of GL, which means
+            // our output will look upside-down relative to what appears on screen if the
+            // typical GL conventions are used.  (For ExtractMpegFrameTest, we avoid the issue
+            // by inverting the frame when we render it.)
+            //
+            // Allocating large buffers is expensive, so we really want mPixelBuf to be
+            // allocated ahead of time if possible.  We still get some allocations from the
+            // Bitmap / PNG creation.
 
             mPixelBuf.rewind();
             GLES20.glReadPixels(0, 0, mWidth, mHeight, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE,

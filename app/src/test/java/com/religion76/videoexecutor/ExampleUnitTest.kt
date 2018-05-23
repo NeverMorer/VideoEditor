@@ -1,4 +1,4 @@
-package com.religion76.mediaexecutor
+package com.religion76.videoexecutor
 
 import org.junit.Test
 

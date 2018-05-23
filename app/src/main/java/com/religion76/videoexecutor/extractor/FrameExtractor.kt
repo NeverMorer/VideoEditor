@@ -1,27 +1,24 @@
-package com.religion76.mediaexecutor.extractor
+package com.religion76.videoexecutor.extractor
 
 import android.graphics.Bitmap
 import android.media.MediaFormat
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
 import android.support.annotation.RequiresApi
 import android.util.Log
-import com.religion76.mediaexecutor.coder.VideoDecoder
 
 /**
  * Created by SunChao
  * on 2018/5/15.
  */
 
-@RequiresApi(Build.VERSION_CODES.JELLY_BEAN)
+@RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
 class FrameExtractor(private val videoPath: String, private val width: Int, private val height: Int) : Runnable {
 
     companion object {
-        val TAG = "FrameCatcher"
+        val TAG = "FrameExtractor"
     }
 
-    private lateinit var videoDecoder: VideoDecoder
+    private lateinit var videoDecoder: ExtractFrameDecoder
 
     private lateinit var outputSurface: CodecOutputSurface
 
@@ -36,63 +33,60 @@ class FrameExtractor(private val videoPath: String, private val width: Int, priv
     var onCatcherInit: (() -> Unit)? = null
 
     override fun run() {
-        if (!videoPath.endsWith(".mp4")) {
-            throw IllegalStateException("video file is not support")
-        }
-
-        Looper.prepare()
         init()
-        handler = Handler(Looper.myLooper())
-        Looper.loop()
     }
 
-    private lateinit var handler: Handler
+    private lateinit var mediaFormat: MediaFormat
+
+    private var isReleased: Boolean = false
 
     private fun init() {
 
         Log.d(TAG, "init " + Thread.currentThread().id)
 
-        outputSurface = CodecOutputSurface(width, height)
+        outputSurface = CodecOutputSurface(640, 480)
 
-        videoDecoder = VideoDecoder()
+        videoDecoder = ExtractFrameDecoder()
 
         videoDecoder.onSampleFormatConfirmed = {
+            Log.d(TAG, "onSampleFormatConfirmed " + Thread.currentThread().id)
+            mediaFormat = it
             duration = it.getLong(MediaFormat.KEY_DURATION)
             isPrepared = true
             onCatcherInit?.invoke()
         }
 
         videoDecoder.onOutputBufferGenerate = { outputBuffer, bufferInfo ->
+            Log.d(TAG, "onOutputBufferGenerate " + Thread.currentThread().id)
+            //must call on the same thread which CodecOutputSurface created
             outputSurface.awaitNewImage()
             outputSurface.drawImage(true)
             onExtractProgressChange?.invoke(outputSurface.frame, bufferInfo.presentationTimeUs)
         }
 
         videoDecoder.onDecodeFinish = {
+            release()
             onExtractFinished?.invoke()
         }
 
         videoDecoder.decode(videoPath, outputSurface.surface, null, false)
-
     }
 
     fun start() {
-        val thread = Thread(this)
-        thread.start()
-        run()
+        Thread(this).start()
     }
 
-
     fun requestFrame(ms: Long) {
-        handler.post {
-            videoDecoder.seekTo(ms * 1000)
-        }
+        Log.d(TAG, "requestFrame")
+        videoDecoder.seekTo(ms)
     }
 
     fun release() {
-        handler.post {
+        if (!isReleased) {
+            videoDecoder.queueEOS()
             videoDecoder.release()
             outputSurface.release()
+            isReleased = true
         }
     }
 }

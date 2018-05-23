@@ -1,4 +1,4 @@
-package com.religion76.mediaexecutor.coder
+package com.religion76.videoexecutor.coder
 
 import android.media.MediaFormat
 import android.media.MediaMuxer
@@ -6,7 +6,6 @@ import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import io.reactivex.schedulers.Schedulers
 import java.io.File
 
 /**
@@ -34,12 +33,17 @@ class MediaCoder {
 
     private val muxer = MediaMuxer(FILE_PATH, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
 
+    var zzzz = true
+
     fun start(path: String, startMs: Long = 0, endMs: Long = 0) {
         filePath = path
 
         videoDecoder.onOutputBufferGenerate = { buffer, bufferInfo ->
             Log.d(TAG, "videoDecoder onOutputBufferGenerate")
-            videoEncoder.offerData(buffer, bufferInfo)
+            if (zzzz) {
+                videoEncoder.offerData(buffer, bufferInfo)
+                zzzz = false
+            }
         }
 
         videoDecoder.onSampleFormatConfirmed = { mediaFormat ->
@@ -82,7 +86,7 @@ class MediaCoder {
             Log.d(TAG, "encoder output format" + it)
         }
 
-        videoDecoder.decode(filePath, null, startMs)
+        videoDecoder.decode(filePath, null, startMs, true)
     }
 
     private fun release() {

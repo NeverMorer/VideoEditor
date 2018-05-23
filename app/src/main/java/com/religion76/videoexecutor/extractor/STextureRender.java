@@ -1,4 +1,4 @@
-package com.religion76.mediaexecutor.extractor;
+package com.religion76.videoexecutor.extractor;
 
 import android.graphics.SurfaceTexture;
 import android.opengl.GLES11Ext;

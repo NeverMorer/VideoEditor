@@ -1,7 +1,6 @@
-package com.religion76.mediaexecutor.coder
+package com.religion76.videoexecutor.coder
 
 import android.media.MediaCodec
-import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.os.Build
 import android.util.Log
@@ -25,6 +24,7 @@ class VideoEncoder {
     private var isEncodeFinish = false
 
     fun prepare(mediaConfig: MediaConfig) {
+        Log.d(TAG, "prepare")
 
         encoder = MediaCodec.createEncoderByType(mediaConfig.mineType)
 
@@ -127,6 +127,7 @@ class VideoEncoder {
     }
 
     fun offerData(data: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) {
+        Log.d(TAG, "zzz")
         if (isEncodeFinish) {
             return
         }
