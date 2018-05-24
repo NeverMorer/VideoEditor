@@ -5,6 +5,7 @@ import android.media.MediaMuxer
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.support.annotation.RequiresApi
 import android.util.Log
 import java.io.File
 
@@ -12,6 +13,8 @@ import java.io.File
  * Created by SunChao
  * on 2018/3/3.
  */
+
+@RequiresApi
 class MediaCoder {
 
     companion object {
@@ -33,17 +36,13 @@ class MediaCoder {
 
     private val muxer = MediaMuxer(FILE_PATH, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
 
-    var zzzz = true
 
     fun start(path: String, startMs: Long = 0, endMs: Long = 0) {
         filePath = path
 
         videoDecoder.onOutputBufferGenerate = { buffer, bufferInfo ->
             Log.d(TAG, "videoDecoder onOutputBufferGenerate")
-            if (zzzz) {
-                videoEncoder.offerData(buffer, bufferInfo)
-                zzzz = false
-            }
+            videoEncoder.offerData(buffer, bufferInfo)
         }
 
         videoDecoder.onSampleFormatConfirmed = { mediaFormat ->

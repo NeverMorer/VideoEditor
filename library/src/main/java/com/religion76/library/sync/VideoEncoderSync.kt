@@ -1,18 +1,18 @@
-package com.religion76.library.coder
+package com.religion76.library.sync
 
 import android.media.MediaCodec
 import android.media.MediaFormat
 import android.os.Build
 import android.util.Log
-import io.reactivex.Observable
-import io.reactivex.schedulers.Schedulers
+import com.religion76.library.coder.CodecFormatUtils
+import com.religion76.library.coder.MediaConfig
 import java.nio.ByteBuffer
 
 /**
  * Created by SunChao
  * on 2018/3/3.
  */
-class VideoEncoder {
+class VideoEncoderSync {
 
     companion object {
         private val TAG = "MediaCoder_Encoder"
@@ -20,8 +20,7 @@ class VideoEncoder {
 
     private lateinit var encoder: MediaCodec
 
-    @Volatile
-    private var isEncodeFinish = false
+    var isEncodeFinish = false
 
     fun prepare(mediaConfig: MediaConfig) {
         Log.d(TAG, "prepare")
@@ -42,8 +41,6 @@ class VideoEncoder {
             inputBuffers = encoder.inputBuffers
             outputBuffers = encoder.outputBuffers
         }
-
-        loopEncoder()
     }
 
     fun prepare(mediaFormat: MediaFormat) {
@@ -56,8 +53,6 @@ class VideoEncoder {
             inputBuffers = encoder.inputBuffers
             outputBuffers = encoder.outputBuffers
         }
-
-        loopEncoder()
     }
 
     fun getOutputFormat() = encoder.outputFormat
@@ -87,37 +82,35 @@ class VideoEncoder {
         }
     }
 
-    private val bufferInfo = MediaCodec.BufferInfo()
+    private val bufferInfo by lazy {
+        MediaCodec.BufferInfo()
+    }
 
-    private fun loopEncoder() {
-        Observable.create<Boolean> {
-            while (true) {
-                val outputBufferIndex = encoder.dequeueOutputBuffer(bufferInfo, 0)
-                if (outputBufferIndex > 0) {
-                    Log.d(TAG, "encoder output data index:$outputBufferIndex")
-                    val outputBuffer = getOutputBuffer(outputBufferIndex)
-                    if (outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
-                        Log.d(TAG, "encoder output try again later")
-                    } else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                        Log.d(TAG, "encoder output format changed")
-                        onOutputFormatChanged?.invoke(encoder.outputFormat)
-                    } else if (bufferInfo.flags.and(MediaCodec.BUFFER_FLAG_END_OF_STREAM) == 0) {
-                        Log.d(TAG, "encoder buffer output ")
-                        onSampleEncode?.invoke(outputBuffer, bufferInfo)
-                        encoder.releaseOutputBuffer(outputBufferIndex, false)
-                    } else {
-                        Log.d(TAG, "encoder buffer end of stream")
-                        it.onNext(true)
-                        it.onComplete()
-                        break
-                    }
+    fun pull(): Boolean {
+        val outputBufferIndex = encoder.dequeueOutputBuffer(bufferInfo, 0)
+        if (outputBufferIndex > 0) {
+            Log.d(TAG, "encoder output data index:$outputBufferIndex")
+            val outputBuffer = getOutputBuffer(outputBufferIndex)
+            when {
+                outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER -> Log.d(TAG, "encoder output try again later")
+                outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
+                    Log.d(TAG, "encoder output format changed")
+                    onOutputFormatChanged?.invoke(encoder.outputFormat)
+                }
+                bufferInfo.flags.and(MediaCodec.BUFFER_FLAG_END_OF_STREAM) == 0 -> {
+                    Log.d(TAG, "encoder buffer output ")
+                    onSampleEncode?.invoke(outputBuffer, bufferInfo)
+                    encoder.releaseOutputBuffer(outputBufferIndex, false)
+                }
+                else -> {
+                    Log.d(TAG, "encoder buffer end of stream")
+                    isEncodeFinish = true
+                    return false
                 }
             }
-        }.subscribeOn(Schedulers.computation())
-                .subscribe {
-                    isEncodeFinish = true
-                    onEncoderCompleted?.invoke()
-                }
+        }
+
+        return true
     }
 
     fun queueEOS() {
