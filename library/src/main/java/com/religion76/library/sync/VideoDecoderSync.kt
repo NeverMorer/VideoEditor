@@ -63,7 +63,7 @@ class VideoDecoderSync {
     fun queueEOS() {
         if (!isDecodeFinish) {
             Log.d(TAG, "------------- decoder queueEOS ------------")
-            val inputBufferIndex = decoder.dequeueInputBuffer(DEFAULT_QUEUE_TIMEOUT)
+            val inputBufferIndex = decoder.dequeueInputBuffer(-1)
             decoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
         }
     }
@@ -132,6 +132,7 @@ class VideoDecoderSync {
     }
 
     fun release() {
+        isDecodeFinish = true
         decoder.release()
     }
 

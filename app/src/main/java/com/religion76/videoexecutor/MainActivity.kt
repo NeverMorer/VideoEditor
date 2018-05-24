@@ -2,12 +2,17 @@ package com.religion76.videoexecutor
 
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.os.Environment
 import android.provider.MediaStore
 import android.support.v4.widget.SimpleCursorAdapter
+import com.religion76.library.sync.VideoCoderSync
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.item_video.view.*
+import java.io.File
 
 class MainActivity : AppCompatActivity() {
+
+    val FILE_PATH = Environment.getExternalStorageDirectory().absolutePath.plus(File.separator).plus(System.currentTimeMillis().toString() + "hhhh.mp4")
 
     private lateinit var localVideos: MutableList<String>
 
@@ -18,7 +23,6 @@ class MainActivity : AppCompatActivity() {
 
         loadLocalVideos()
     }
-
 
     private fun loadLocalVideos() {
         localVideos = emptyList<String>().toMutableList()
@@ -31,8 +35,12 @@ class MainActivity : AppCompatActivity() {
 
         lvVideos.adapter = adapter
         lvVideos.setOnItemClickListener { parent, view, position, id ->
-//            val mediaCoder = MediaCoder()
+            //            val mediaCoder = MediaCoder()
 //            mediaCoder.start(view.tvPath.text.toString(),2000, 6000)
+            val coder = VideoCoderSync(view.tvPath.text.toString(), FILE_PATH)
+            coder.withTrim(2000, 5000)
+            coder.withScale(480, 480)
+            Thread(coder).start()
         }
 
     }

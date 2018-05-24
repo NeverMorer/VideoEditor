@@ -3,6 +3,7 @@ package com.religion76.library.sync
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMuxer
+import android.util.Log
 import com.religion76.library.coder.MediaConfig
 
 /**
@@ -37,7 +38,8 @@ class VideoCoderSync(private val path: String, private val dest: String) : Runna
         }
     }
 
-    fun withScale(width: Int, height: Int) {
+    //it's should be support via use GLES on the way to encoder
+    private fun withScale(width: Int, height: Int) {
         this.width = width
         this.height = height
     }
@@ -72,9 +74,11 @@ class VideoCoderSync(private val path: String, private val dest: String) : Runna
         videoDecoder.prepare(mediaFormat, mediaExtractor)
 
         videoDecoder.onOutputBufferGenerate = { dataBuffer, bufferInfo ->
+            Log.d(TAG, "onOutputBufferGenerate")
             videoEncoder.offerData(dataBuffer, bufferInfo)
         }
         videoDecoder.onDecodeFinish = {
+            Log.d(TAG, "onDecodeFinish")
             videoEncoder.queueEOS()
         }
     }
@@ -82,13 +86,22 @@ class VideoCoderSync(private val path: String, private val dest: String) : Runna
     private fun initEncoder(mediaFormat: MediaFormat) {
         videoEncoder = VideoEncoderSync()
         val mediaConfig = MediaConfig()
-        mediaConfig.width = width ?: mediaFormat.getInteger(MediaFormat.KEY_WIDTH)
-        mediaConfig.height = height ?: mediaFormat.getInteger(MediaFormat.KEY_HEIGHT)
+        if (width != null && height != null) {
+            mediaConfig.originalWidth = mediaFormat.getInteger(MediaFormat.KEY_WIDTH)
+            mediaConfig.originalHeight =  mediaFormat.getInteger(MediaFormat.KEY_HEIGHT)
+            mediaConfig.width = width!!
+            mediaConfig.height = height!!
+        } else {
+            mediaConfig.width =  mediaFormat.getInteger(MediaFormat.KEY_WIDTH)
+            mediaConfig.height =  mediaFormat.getInteger(MediaFormat.KEY_HEIGHT)
+        }
+
         mediaConfig.duration = mediaFormat.getLong(MediaFormat.KEY_DURATION)
         mediaConfig.path = path
         videoEncoder.prepare(mediaConfig)
 
         videoEncoder.onSampleEncode = { dataBuffer, bufferInfo ->
+            Log.d(TAG, "onSampleEncode")
             if (mediaMuxer == null) {
                 mediaMuxer = MediaMuxer(dest, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
                 muxTrackIndex = mediaMuxer!!.addTrack(videoEncoder.getOutputFormat())

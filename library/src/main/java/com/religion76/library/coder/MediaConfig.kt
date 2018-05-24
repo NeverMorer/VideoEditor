@@ -20,6 +20,8 @@ class MediaConfig {
     var height = 1280
     var duration = 0L
 
+    var originalWidth = 0
+    var originalHeight = 0
 
     var path: String? = null
 
@@ -27,12 +29,12 @@ class MediaConfig {
     fun getCalBitrate(): Long = (width * height * frameRate * BPP).toLong()
 
     fun getCompressBitrate(): Long {
-        return if (path != null){
+        return if (path != null) {
             val length = File(path).length()
             val originalBitrate = length * 8 / (duration / 1000000)
             Log.d("MediaConfig", "original bitrate: $originalBitrate")
             return (originalBitrate * 0.5).toLong()
-        }else{
+        } else {
             getCalBitrate()
         }
     }

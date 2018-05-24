@@ -32,6 +32,7 @@ class VideoEncoderSync {
         videoFormat.setInteger(MediaFormat.KEY_BIT_RATE, mediaConfig.getCompressBitrate().toInt())
         videoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, mediaConfig.frameRate)
         videoFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, mediaConfig.iFrameInterval)
+
         Log.d(TAG, "on encoder configured $videoFormat")
 
         encoder.configure(videoFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
@@ -114,9 +115,11 @@ class VideoEncoderSync {
     }
 
     fun queueEOS() {
-        Log.d(TAG, "------------- encoder queueEOS ------------")
-        val inputBufferIndex = encoder.dequeueInputBuffer(-1)
-        encoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+        if (!isEncodeFinish) {
+            Log.d(TAG, "------------- encoder queueEOS ------------")
+            val inputBufferIndex = encoder.dequeueInputBuffer(-1)
+            encoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+        }
     }
 
     fun offerData(data: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) {
@@ -126,7 +129,8 @@ class VideoEncoderSync {
         val inputBufferIndex = encoder.dequeueInputBuffer(-1)
         if (inputBufferIndex > 0) {
             val inputBuffer = getInputBuffer(inputBufferIndex)
-
+            Log.d("zzz", "size: ${inputBuffer.capacity()}")
+            Log.d("zzz", "sizep: ${data.capacity()}")
             inputBuffer.clear()
             inputBuffer.put(data)
             if (bufferInfo.size < 0) {
@@ -138,6 +142,7 @@ class VideoEncoderSync {
     }
 
     fun release() {
+        isEncodeFinish = true
         encoder.release()
     }
 
