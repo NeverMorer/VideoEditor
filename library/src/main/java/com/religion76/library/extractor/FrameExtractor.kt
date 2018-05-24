@@ -1,4 +1,4 @@
-package com.religion76.videoexecutor.extractor
+package com.religion76.library.extractor
 
 import android.graphics.Bitmap
 import android.media.MediaFormat

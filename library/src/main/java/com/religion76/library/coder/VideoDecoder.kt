@@ -1,4 +1,4 @@
-package com.religion76.videoexecutor.coder
+package com.religion76.library.coder
 
 import android.media.MediaCodec
 import android.media.MediaExtractor

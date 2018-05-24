@@ -1,4 +1,4 @@
-package com.religion76.videoexecutor.executor
+package com.religion76.library.executor
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory

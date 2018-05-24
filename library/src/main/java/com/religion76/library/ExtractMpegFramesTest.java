@@ -1,4 +1,4 @@
-package com.religion76.videoexecutor;
+package com.religion76.library;
 
 /*
  * Copyright 2013 The Android Open Source Project

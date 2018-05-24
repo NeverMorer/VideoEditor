@@ -33,7 +33,6 @@ class MainActivity : AppCompatActivity() {
         lvVideos.setOnItemClickListener { parent, view, position, id ->
 //            val mediaCoder = MediaCoder()
 //            mediaCoder.start(view.tvPath.text.toString(),2000, 6000)
-            ExtractMpegFramesTest().testExtractMpegFrames(view.tvPath.text.toString())
         }
 
     }
