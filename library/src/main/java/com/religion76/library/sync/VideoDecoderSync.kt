@@ -31,6 +31,9 @@ class VideoDecoderSync {
 
     var isDecodeFinish = false
 
+    var isEOSNeed = false
+
+    @Volatile
     var onDecodeFinish: (() -> Unit)? = null
 
     private fun getInputBuffer(index: Int): ByteBuffer {
@@ -63,8 +66,7 @@ class VideoDecoderSync {
     fun queueEOS() {
         if (!isDecodeFinish) {
             Log.d(TAG, "------------- decoder queueEOS ------------")
-            val inputBufferIndex = decoder.dequeueInputBuffer(-1)
-            decoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+            isEOSNeed = true
         }
     }
 
@@ -101,9 +103,9 @@ class VideoDecoderSync {
                         onOutputBufferGenerate?.invoke(outBuffer, bufferInfo)
                         decoder.releaseOutputBuffer(outputBufferIndex, isRender)
                     } else {
-                        Log.d(TAG, "decoder end of stream")
-                        onDecodeFinish?.invoke()
+                        Log.d(TAG, "=== decoder end of stream ===")
                         isDecodeFinish = true
+                        onDecodeFinish?.invoke()
                     }
                 }
             }
@@ -114,20 +116,33 @@ class VideoDecoderSync {
 
 
     fun enqueueData() {
+        if (isDecodeFinish) {
+            return
+        }
+
+
         val inputBufferIndex = decoder.dequeueInputBuffer(DEFAULT_QUEUE_TIMEOUT)
         //double check isDecodeFinish because last code is block
-        if (inputBufferIndex >= 0 && !isDecodeFinish) {
-            val inputBuffer = getInputBuffer(inputBufferIndex)
-            val sampleSize = extractor.readSampleData(inputBuffer, 0)
-            if (sampleSize < 0) {
-                Log.d(TAG, "InputBuffer BUFFER_FLAG_END_OF_STREAM")
+        if (inputBufferIndex >= 0) {
+
+            if (isEOSNeed) {
+                Log.d(TAG, "------------- queue EOS ------------")
                 decoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                isEOSNeed = false
             } else {
-                //here to filter sample data by limit duration
-                Log.d(TAG, "InputBuffer queueInputBuffer")
-                decoder.queueInputBuffer(inputBufferIndex, 0, sampleSize, extractor.sampleTime, 0)
-                extractor.advance()
+                val inputBuffer = getInputBuffer(inputBufferIndex)
+                val sampleSize = extractor.readSampleData(inputBuffer, 0)
+                if (sampleSize < 0) {
+                    Log.d(TAG, "InputBuffer BUFFER_FLAG_END_OF_STREAM")
+                    decoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                } else {
+                    //here to filter sample data by limit duration
+                    Log.d(TAG, "InputBuffer queueInputBuffer")
+                    decoder.queueInputBuffer(inputBufferIndex, 0, sampleSize, extractor.sampleTime, 0)
+                    extractor.advance()
+                }
             }
+
         }
     }
 

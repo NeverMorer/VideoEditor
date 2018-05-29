@@ -16,11 +16,14 @@ class VideoEncoderSync {
 
     companion object {
         private val TAG = "MediaCoder_Encoder"
+        const val DEFAULT_QUEUE_TIMEOUT = 10000L
     }
 
     private lateinit var encoder: MediaCodec
 
     var isEncodeFinish = false
+
+    var isEOSNeed = false
 
     fun prepare(mediaConfig: MediaConfig) {
         Log.d(TAG, "prepare")
@@ -104,7 +107,7 @@ class VideoEncoderSync {
                     encoder.releaseOutputBuffer(outputBufferIndex, false)
                 }
                 else -> {
-                    Log.d(TAG, "encoder buffer end of stream")
+                    Log.d(TAG, "=== encoder buffer end of stream ===")
                     isEncodeFinish = true
                     return false
                 }
@@ -116,9 +119,7 @@ class VideoEncoderSync {
 
     fun queueEOS() {
         if (!isEncodeFinish) {
-            Log.d(TAG, "------------- encoder queueEOS ------------")
-            val inputBufferIndex = encoder.dequeueInputBuffer(-1)
-            encoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+            isEOSNeed = true
         }
     }
 
@@ -126,17 +127,23 @@ class VideoEncoderSync {
         if (isEncodeFinish) {
             return
         }
-        val inputBufferIndex = encoder.dequeueInputBuffer(-1)
+
+        val inputBufferIndex = encoder.dequeueInputBuffer(DEFAULT_QUEUE_TIMEOUT)
         if (inputBufferIndex > 0) {
-            val inputBuffer = getInputBuffer(inputBufferIndex)
-            Log.d("zzz", "size: ${inputBuffer.capacity()}")
-            Log.d("zzz", "sizep: ${data.capacity()}")
-            inputBuffer.clear()
-            inputBuffer.put(data)
-            if (bufferInfo.size < 0) {
+
+            if (isEOSNeed) {
+                Log.d(TAG, "------------- queue EOS ------------")
                 encoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                isEOSNeed = false
             } else {
-                encoder.queueInputBuffer(inputBufferIndex, bufferInfo.offset, bufferInfo.size, bufferInfo.presentationTimeUs, bufferInfo.flags)
+                val inputBuffer = getInputBuffer(inputBufferIndex)
+                inputBuffer.clear()
+                inputBuffer.put(data)
+                if (bufferInfo.size < 0) {
+                    encoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                } else {
+                    encoder.queueInputBuffer(inputBufferIndex, bufferInfo.offset, bufferInfo.size, bufferInfo.presentationTimeUs, bufferInfo.flags)
+                }
             }
         }
     }
@@ -145,6 +152,5 @@ class VideoEncoderSync {
         isEncodeFinish = true
         encoder.release()
     }
-
 
 }

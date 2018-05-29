@@ -24,6 +24,8 @@ class MainActivity : AppCompatActivity() {
         loadLocalVideos()
     }
 
+    var coder: VideoCoderSync? = null
+
     private fun loadLocalVideos() {
         localVideos = emptyList<String>().toMutableList()
 
@@ -37,9 +39,9 @@ class MainActivity : AppCompatActivity() {
         lvVideos.setOnItemClickListener { parent, view, position, id ->
             //            val mediaCoder = MediaCoder()
 //            mediaCoder.start(view.tvPath.text.toString(),2000, 6000)
-            val coder = VideoCoderSync(view.tvPath.text.toString(), FILE_PATH)
-            coder.withTrim(2000, 5000)
-            coder.withScale(480, 480)
+            coder = VideoCoderSync(view.tvPath.text.toString(), FILE_PATH)
+            coder?.withTrim(1000, 5000)
+//            coder.withScale(480, 480)
             Thread(coder).start()
         }
 
@@ -47,6 +49,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-
+        coder?.release()
     }
 }

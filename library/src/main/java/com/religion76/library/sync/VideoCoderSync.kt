@@ -108,7 +108,8 @@ class VideoCoderSync(private val path: String, private val dest: String) : Runna
                 mediaMuxer!!.start()
             }
 
-            if (endMs != null && bufferInfo.presentationTimeUs > endMs!! * 1000) {
+            if (endMs != null && bufferInfo.presentationTimeUs > endMs!! * 1000 && !videoDecoder.isDecodeFinish) {
+                Log.d(TAG, "------------- end trim ------------")
                 videoDecoder.queueEOS()
                 videoEncoder.queueEOS()
             } else {
@@ -123,16 +124,19 @@ class VideoCoderSync(private val path: String, private val dest: String) : Runna
         }
 
         while (true) {
+
+            if (videoDecoder.isDecodeFinish && videoEncoder.isEncodeFinish) {
+                Log.d(TAG, "there")
+                release()
+                break
+            }
+
             videoDecoder.enqueueData()
 
             videoDecoder.pull()
 
             videoEncoder.pull()
 
-            if (videoDecoder.isDecodeFinish && videoEncoder.isEncodeFinish) {
-                release()
-                break
-            }
         }
     }
 
