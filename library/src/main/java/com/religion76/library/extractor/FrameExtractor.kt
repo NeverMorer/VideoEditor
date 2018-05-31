@@ -61,7 +61,6 @@ class FrameExtractor(private val videoPath: String, private val width: Int, priv
                 height += width
                 width = height - width
                 height -= width
-
             }
         }
 

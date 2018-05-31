@@ -2,7 +2,9 @@ package com.religion76.library.sync
 
 import android.media.MediaExtractor
 import android.media.MediaFormat
+import android.media.MediaMetadataRetriever
 import android.media.MediaMuxer
+import android.os.Build
 import android.util.Log
 import com.religion76.library.coder.MediaConfig
 
@@ -34,6 +36,8 @@ class VideoCoderSync(private val path: String, private val dest: String) : Runna
 
     private var bitrate: Int? = null
 
+    private var rotateDegree: Int? = null
+
     override fun run() {
         if (prepare()) {
             loop()
@@ -62,6 +66,15 @@ class VideoCoderSync(private val path: String, private val dest: String) : Runna
         for (i in 0..mediaExtractor.trackCount) {
             val trackFormat = mediaExtractor.getTrackFormat(i)
             if (trackFormat.getString(MediaFormat.KEY_MIME).startsWith("video")) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    val retriever = MediaMetadataRetriever()
+                    retriever.setDataSource(path)
+                    val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION).toInt()
+                    if (rotation > 90){
+                        rotateDegree = rotation
+                    }
+                }
+
                 mediaExtractor.selectTrack(i)
 
                 initDecoder(trackFormat)
@@ -69,6 +82,7 @@ class VideoCoderSync(private val path: String, private val dest: String) : Runna
 
                 return true
             }
+
         }
 
         return false
@@ -104,7 +118,7 @@ class VideoCoderSync(private val path: String, private val dest: String) : Runna
 
         mediaConfig.duration = mediaFormat.getLong(MediaFormat.KEY_DURATION)
         mediaConfig.path = path
-        videoEncoder.prepare(mediaConfig, bitrate)
+        videoEncoder.prepare(mediaConfig, bitrate, rotateDegree)
 
         videoEncoder.onSampleEncode = { dataBuffer, bufferInfo ->
             Log.d(TAG, "onSampleEncode")
@@ -159,7 +173,7 @@ class VideoCoderSync(private val path: String, private val dest: String) : Runna
 
             videoDecoder.pull()
 
-            if (videoEncoder.isEOSNeed){
+            if (videoEncoder.isEOSNeed) {
                 videoEncoder.signEOS()
             }
 
