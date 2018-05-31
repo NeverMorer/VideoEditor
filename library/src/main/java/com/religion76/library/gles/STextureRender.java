@@ -1,4 +1,4 @@
-package com.religion76.library.extractor;
+package com.religion76.library.gles;
 
 import android.graphics.SurfaceTexture;
 import android.opengl.GLES11Ext;
@@ -111,6 +111,13 @@ public class STextureRender {
         checkGlError("glEnableVertexAttribArray maTextureHandle");
 
         Matrix.setIdentityM(mMVPMatrix, 0);
+
+        //If set invert true, many video dose not work properly, so find this way to rotate frames
+        //It's need to be figured out
+        if (!invert) {
+            Matrix.rotateM(mMVPMatrix, 0, 180, 0.0f, 0.0f, 1.0f);
+        }
+
         GLES20.glUniformMatrix4fv(muMVPMatrixHandle, 1, false, mMVPMatrix, 0);
         GLES20.glUniformMatrix4fv(muSTMatrixHandle, 1, false, mSTMatrix, 0);
 

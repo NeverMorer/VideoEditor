@@ -5,12 +5,7 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.os.Build
 import android.util.Log
-import android.view.Surface
-import io.reactivex.Observable
-import io.reactivex.disposables.Disposable
-import io.reactivex.schedulers.Schedulers
 import java.nio.ByteBuffer
-import java.util.concurrent.TimeUnit
 
 /**
  * Created by SunChao
@@ -119,7 +114,6 @@ class VideoDecoderSync {
         if (isDecodeFinish) {
             return
         }
-
 
         val inputBufferIndex = decoder.dequeueInputBuffer(DEFAULT_QUEUE_TIMEOUT)
         //double check isDecodeFinish because last code is block

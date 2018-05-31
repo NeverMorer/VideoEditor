@@ -1,4 +1,4 @@
-package com.religion76.library.extractor;
+package com.religion76.library.gles;
 
 import android.graphics.Bitmap;
 import android.graphics.SurfaceTexture;
@@ -325,6 +325,14 @@ public class CodecOutputSurface
         bmp.copyPixelsFromBuffer(mPixelBuf);
 
         return bmp;
+    }
+
+    public ByteBuffer getFrameData() {
+
+        mPixelBuf.rewind();
+        GLES20.glReadPixels(0, 0, mWidth, mHeight, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, mPixelBuf);
+        mPixelBuf.rewind();
+        return mPixelBuf;
     }
 
     /**

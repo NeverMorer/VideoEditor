@@ -24,7 +24,7 @@ class ExtractFrameDecoder {
 
     companion object {
         const val TAG = "MediaCoder_Decoder"
-        const val DEFAULT_QUEUE_TIMEOUT = 10000L
+        const val DEFAULT_QUEUE_TIMEOUT = 100000L
         const val FAKE_SAMPLE_TIME = 999999999999L
         const val FAKE_SAMPLE_NUM_PER = 4
     }

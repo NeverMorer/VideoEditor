@@ -2,9 +2,11 @@ package com.religion76.library.extractor
 
 import android.graphics.Bitmap
 import android.media.MediaFormat
+import android.media.MediaMetadataRetriever
 import android.os.Build
 import android.support.annotation.RequiresApi
 import android.util.Log
+import com.religion76.library.gles.CodecOutputSurface
 
 /**
  * Created by SunChao
@@ -44,7 +46,26 @@ class FrameExtractor(private val videoPath: String, private val width: Int, priv
 
         Log.d(TAG, "init " + Thread.currentThread().id)
 
-        outputSurface = CodecOutputSurface(640, 480)
+        val retrieverSrc = MediaMetadataRetriever()
+        retrieverSrc.setDataSource(videoPath)
+
+        var height = retrieverSrc.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT).toInt()
+        var width = retrieverSrc.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH).toInt()
+
+        val degreesString = retrieverSrc.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
+        if (degreesString != null) {
+            val d = Integer.parseInt(degreesString)
+            if (d > 0) {
+                Log.d(TAG, "width: $width  height:$height  rotate:$d")
+
+                height += width
+                width = height - width
+                height -= width
+
+            }
+        }
+
+        outputSurface = CodecOutputSurface(width, height)
 
         videoDecoder = ExtractFrameDecoder()
 
@@ -60,7 +81,7 @@ class FrameExtractor(private val videoPath: String, private val width: Int, priv
             Log.d(TAG, "onOutputBufferGenerate " + Thread.currentThread().id)
             //must call on the same thread which CodecOutputSurface created
             outputSurface.awaitNewImage()
-            outputSurface.drawImage(true)
+            outputSurface.drawImage(false)
             onExtractProgressChange?.invoke(outputSurface.frame, bufferInfo.presentationTimeUs)
         }
 

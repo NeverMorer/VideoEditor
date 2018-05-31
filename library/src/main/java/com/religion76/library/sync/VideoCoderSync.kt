@@ -88,12 +88,12 @@ class VideoCoderSync(private val path: String, private val dest: String) : Runna
         val mediaConfig = MediaConfig()
         if (width != null && height != null) {
             mediaConfig.originalWidth = mediaFormat.getInteger(MediaFormat.KEY_WIDTH)
-            mediaConfig.originalHeight =  mediaFormat.getInteger(MediaFormat.KEY_HEIGHT)
+            mediaConfig.originalHeight = mediaFormat.getInteger(MediaFormat.KEY_HEIGHT)
             mediaConfig.width = width!!
             mediaConfig.height = height!!
         } else {
-            mediaConfig.width =  mediaFormat.getInteger(MediaFormat.KEY_WIDTH)
-            mediaConfig.height =  mediaFormat.getInteger(MediaFormat.KEY_HEIGHT)
+            mediaConfig.width = mediaFormat.getInteger(MediaFormat.KEY_WIDTH)
+            mediaConfig.height = mediaFormat.getInteger(MediaFormat.KEY_HEIGHT)
         }
 
         mediaConfig.duration = mediaFormat.getLong(MediaFormat.KEY_DURATION)
@@ -103,9 +103,7 @@ class VideoCoderSync(private val path: String, private val dest: String) : Runna
         videoEncoder.onSampleEncode = { dataBuffer, bufferInfo ->
             Log.d(TAG, "onSampleEncode")
             if (mediaMuxer == null) {
-                mediaMuxer = MediaMuxer(dest, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
-                muxTrackIndex = mediaMuxer!!.addTrack(videoEncoder.getOutputFormat())
-                mediaMuxer!!.start()
+                initMediaMuxer()
             }
 
             if (endMs != null && bufferInfo.presentationTimeUs > endMs!! * 1000 && !videoDecoder.isDecodeFinish) {
@@ -117,6 +115,26 @@ class VideoCoderSync(private val path: String, private val dest: String) : Runna
             }
         }
     }
+
+    private fun initMediaMuxer() {
+
+        mediaMuxer = MediaMuxer(dest, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+        muxTrackIndex = mediaMuxer!!.addTrack(videoEncoder.getOutputFormat())
+
+        // Set up the orientation and starting time for extractor.
+//        val retriever = MediaMetadataRetriever()
+//        retriever.setDataSource(path)
+//        val degreesString = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
+//        if (degreesString != null) {
+//            val degrees = Integer.parseInt(degreesString)
+//            if (degrees >= 0) {
+//                mediaMuxer!!.setOrientationHint(degrees)
+//            }
+//        }
+
+        mediaMuxer!!.start()
+    }
+
 
     private fun loop() {
         startMs?.let {
@@ -136,7 +154,6 @@ class VideoCoderSync(private val path: String, private val dest: String) : Runna
             videoDecoder.pull()
 
             videoEncoder.pull()
-
         }
     }
 

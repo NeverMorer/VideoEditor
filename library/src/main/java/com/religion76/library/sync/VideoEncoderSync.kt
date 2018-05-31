@@ -35,6 +35,7 @@ class VideoEncoderSync {
         videoFormat.setInteger(MediaFormat.KEY_BIT_RATE, mediaConfig.getCompressBitrate().toInt())
         videoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, mediaConfig.frameRate)
         videoFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, mediaConfig.iFrameInterval)
+        videoFormat.setInteger("rotation-degrees", 90)
 
         Log.d(TAG, "on encoder configured $videoFormat")
 
