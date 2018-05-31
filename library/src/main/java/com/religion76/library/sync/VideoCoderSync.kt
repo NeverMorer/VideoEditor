@@ -70,7 +70,7 @@ class VideoCoderSync(private val path: String, private val dest: String) : Runna
                     val retriever = MediaMetadataRetriever()
                     retriever.setDataSource(path)
                     val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION).toInt()
-                    if (rotation > 90){
+                    if (rotation > 0){
                         rotateDegree = rotation
                     }
                 }
