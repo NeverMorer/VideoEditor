@@ -25,14 +25,14 @@ class VideoEncoderSync {
 
     var isEOSNeed = false
 
-    fun prepare(mediaConfig: MediaConfig) {
+    fun prepare(mediaConfig: MediaConfig, bitrate: Int? = null) {
         Log.d(TAG, "prepare")
 
         encoder = MediaCodec.createEncoderByType(mediaConfig.mineType)
 
         val videoFormat = MediaFormat.createVideoFormat(mediaConfig.mineType, mediaConfig.width, mediaConfig.height)
         videoFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, CodecFormatUtils.getVideoCompatibilityColorFormat(encoder.codecInfo, mediaConfig.mineType))
-        videoFormat.setInteger(MediaFormat.KEY_BIT_RATE, mediaConfig.getCompressBitrate().toInt())
+        videoFormat.setInteger(MediaFormat.KEY_BIT_RATE, bitrate ?: mediaConfig.getCompressBitrate().toInt())
         videoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, mediaConfig.frameRate)
         videoFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, mediaConfig.iFrameInterval)
         videoFormat.setInteger("rotation-degrees", 90)
@@ -124,6 +124,14 @@ class VideoEncoderSync {
         }
     }
 
+    fun signEOS(){
+        val inputBufferIndex = encoder.dequeueInputBuffer(DEFAULT_QUEUE_TIMEOUT)
+        if (inputBufferIndex > 0) {
+            encoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+            isEOSNeed = false
+        }
+    }
+
     fun offerData(data: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) {
         if (isEncodeFinish) {
             return
@@ -131,7 +139,6 @@ class VideoEncoderSync {
 
         val inputBufferIndex = encoder.dequeueInputBuffer(DEFAULT_QUEUE_TIMEOUT)
         if (inputBufferIndex > 0) {
-
             if (isEOSNeed) {
                 Log.d(TAG, "------------- queue EOS ------------")
                 encoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)

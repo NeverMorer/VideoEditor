@@ -32,6 +32,8 @@ class VideoCoderSync(private val path: String, private val dest: String) : Runna
     private var startMs: Long? = null
     private var endMs: Long? = null
 
+    private var bitrate: Int? = null
+
     override fun run() {
         if (prepare()) {
             loop()
@@ -47,6 +49,10 @@ class VideoCoderSync(private val path: String, private val dest: String) : Runna
     fun withTrim(startMs: Long? = null, endMs: Long? = null) {
         this.startMs = startMs
         this.endMs = endMs
+    }
+
+    fun setBitrate(bitrate: Int) {
+        this.bitrate = bitrate
     }
 
     private fun prepare(): Boolean {
@@ -98,7 +104,7 @@ class VideoCoderSync(private val path: String, private val dest: String) : Runna
 
         mediaConfig.duration = mediaFormat.getLong(MediaFormat.KEY_DURATION)
         mediaConfig.path = path
-        videoEncoder.prepare(mediaConfig)
+        videoEncoder.prepare(mediaConfig, bitrate)
 
         videoEncoder.onSampleEncode = { dataBuffer, bufferInfo ->
             Log.d(TAG, "onSampleEncode")
@@ -152,6 +158,10 @@ class VideoCoderSync(private val path: String, private val dest: String) : Runna
             videoDecoder.enqueueData()
 
             videoDecoder.pull()
+
+            if (videoEncoder.isEOSNeed){
+                videoEncoder.signEOS()
+            }
 
             videoEncoder.pull()
         }

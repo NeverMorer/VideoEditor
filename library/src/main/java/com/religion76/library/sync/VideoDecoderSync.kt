@@ -28,7 +28,6 @@ class VideoDecoderSync {
 
     var isEOSNeed = false
 
-    @Volatile
     var onDecodeFinish: (() -> Unit)? = null
 
     private fun getInputBuffer(index: Int): ByteBuffer {
