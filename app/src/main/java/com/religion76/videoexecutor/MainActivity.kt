@@ -14,6 +14,7 @@ import android.util.Log
 import android.view.View
 import com.religion76.library.extractor.FrameExtractor
 import com.religion76.library.sync.VideoCoderSync
+import com.religion76.library.sync.VideoCoderSync2
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.item_video.view.*
 import java.io.File
@@ -34,10 +35,9 @@ class MainActivity : AppCompatActivity() {
         } else {
             loadLocalVideos()
         }
-
     }
 
-    var coder: VideoCoderSync? = null
+    var coder: VideoCoderSync2? = null
 
     val handler = Handler()
 
@@ -69,27 +69,11 @@ class MainActivity : AppCompatActivity() {
                 Log.d(VideoCoderSync.TAG, " rotate degree:$d")
             }
 
-            coder = VideoCoderSync(path, FILE_PATH)
-            coder?.withTrim(1000, 4000)
+            coder = VideoCoderSync2(path, FILE_PATH)
+            coder?.withTrim(1000, 5000)
 //            coder.withScale(480, 480)M
             Thread(coder).start()
 
-//            val extractor = FrameExtractor(view.tvPath.text.toString(), 50, 50)
-//            extractor.onExtractProgressChange = { frame: Bitmap, timeUs: Long ->
-//                handler.post {
-//                    image.visibility = View.VISIBLE
-//                    image.setImageBitmap(frame)
-//                    extractor.release()
-//                }
-//            }
-//
-//            extractor.onCatcherInit = {
-//                handler.postDelayed({
-//                    extractor.requestFrame(0)
-//                }, 500)
-//            }
-//
-//            extractor.start()
         }
     }
 

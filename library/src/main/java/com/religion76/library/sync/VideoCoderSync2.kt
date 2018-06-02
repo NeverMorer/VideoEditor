@@ -1,44 +1,63 @@
 package com.religion76.library.sync
 
+import android.graphics.SurfaceTexture
 import android.media.MediaExtractor
 import android.media.MediaFormat
-import android.media.MediaMetadataRetriever
 import android.media.MediaMuxer
-import android.os.Build
+import android.opengl.GLES20
+import android.os.Handler
 import android.util.Log
+import android.view.Surface
 import com.religion76.library.coder.MediaConfig
+import com.religion76.library.gles.EglCore
+import com.religion76.library.gles.FullFrameRect
+import com.religion76.library.gles.Texture2dProgram
+import com.religion76.library.gles.WindowSurface
+import java.util.*
 
 /**
  * Created by SunChao
  * on 2018/5/24.
  */
-class VideoCoderSync(private val path: String, private val dest: String) : Runnable {
+class VideoCoderSync2(private val path: String, private val dest: String) : Runnable, SurfaceTexture.OnFrameAvailableListener {
 
     companion object {
-        const val TAG = "VideoCoderSync"
+        const val TAG = "VideoCoderSync2"
     }
 
-    private lateinit var videoEncoder: VideoEncoderSync
+    private lateinit var videoEncoder: VideoEncoderSync2
 
-    private lateinit var videoDecoder: VideoDecoderSync
+    private lateinit var videoDecoder: VideoDecoderSync2
 
     private lateinit var mediaExtractor: MediaExtractor
+
+    private lateinit var surfaceTexture: SurfaceTexture
+
+    private lateinit var encodeSurface: WindowSurface
+
+    private var textureId: Int? = null
+
+    private lateinit var fullFrameRect: FullFrameRect
+
+    private lateinit var mediaInfo: MediaInfo
+
+    private lateinit var eglCore: EglCore
+
+    private val tmpMatrix = FloatArray(16)
 
     private var mediaMuxer: MediaMuxer? = null
 
     private var muxTrackIndex: Int = -1
-
-    private var height: Int? = null
-    private var width: Int? = null
 
     private var startMs: Long? = null
     private var endMs: Long? = null
 
     private var bitrate: Int? = null
 
-    private var rotateDegree: Int? = null
+    private lateinit var handler: Handler
 
     override fun run() {
+
         if (prepare()) {
             loop()
         }
@@ -46,8 +65,7 @@ class VideoCoderSync(private val path: String, private val dest: String) : Runna
 
     //it's should be support via use GLES on the way to encoder
     private fun withScale(width: Int, height: Int) {
-        this.width = width
-        this.height = height
+
     }
 
     fun withTrim(startMs: Long? = null, endMs: Long? = null) {
@@ -60,66 +78,104 @@ class VideoCoderSync(private val path: String, private val dest: String) : Runna
     }
 
     private fun prepare(): Boolean {
+
+        mediaInfo = MediaInfo.getMediaInfo(path)
+
         mediaExtractor = MediaExtractor()
         mediaExtractor.setDataSource(path)
 
         for (i in 0..mediaExtractor.trackCount) {
             val trackFormat = mediaExtractor.getTrackFormat(i)
             if (trackFormat.getString(MediaFormat.KEY_MIME).startsWith("video")) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    val retriever = MediaMetadataRetriever()
-                    retriever.setDataSource(path)
-                    val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION).toInt()
-                    if (rotation > 0){
-                        rotateDegree = rotation
-                    }
-                }
-
                 mediaExtractor.selectTrack(i)
 
-                initDecoder(trackFormat)
+                //Encoder must be init first
                 initEncoder(trackFormat)
+                initDecoder(trackFormat)
 
                 return true
             }
-
         }
 
         return false
     }
 
-    private fun initDecoder(mediaFormat: MediaFormat) {
-        videoDecoder = VideoDecoderSync()
+    private fun initTexture() {
 
-        videoDecoder.prepare(mediaFormat, mediaExtractor)
+        eglCore = EglCore(null, EglCore.FLAG_RECORDABLE)
+
+        encodeSurface = WindowSurface(eglCore, videoEncoder.surface, true)
+
+        encodeSurface.makeCurrent()
+
+        fullFrameRect = FullFrameRect(Texture2dProgram(Texture2dProgram.ProgramType.TEXTURE_EXT))
+        textureId = fullFrameRect.createTextureObject()
+
+        surfaceTexture = SurfaceTexture(textureId!!)
+        surfaceTexture.setOnFrameAvailableListener(this)
+    }
+
+    override fun onFrameAvailable(st: SurfaceTexture?) {
+        Log.d(TAG, "onFrameAvailable")
+        isNewFrameAvailable = true
+    }
+
+    @Transient
+    private var isNewFrameAvailable: Boolean = false
+
+    private var bufferTimeQueue: Queue<Long> = ArrayDeque()
+
+    private fun draw() {
+        Log.d(TAG, "draw")
+        textureId?.let {
+
+            surfaceTexture.updateTexImage()
+            surfaceTexture.getTransformMatrix(tmpMatrix)
+
+            encodeSurface.makeCurrent()
+
+            GLES20.glViewport(0, 0, mediaInfo.getWidth(), mediaInfo.getHeight())
+            fullFrameRect.drawFrame(it, tmpMatrix)
+
+            if (bufferTimeQueue.isNotEmpty()) {
+                encodeSurface.setPresentationTime(bufferTimeQueue.poll() * 1000)
+            }
+            encodeSurface.swapBuffers()
+        }
+    }
+
+    private fun initDecoder(mediaFormat: MediaFormat) {
+        videoDecoder = VideoDecoderSync2()
+
+        videoDecoder.prepare(mediaFormat, mediaExtractor, Surface(surfaceTexture))
 
         videoDecoder.onOutputBufferGenerate = { dataBuffer, bufferInfo ->
             Log.d(TAG, "onOutputBufferGenerate")
             Log.d(TAG, "decode_presentationTimeUs: ${bufferInfo.presentationTimeUs}")
-            videoEncoder.offerData(dataBuffer, bufferInfo)
+
+            bufferTimeQueue.offer(bufferInfo.presentationTimeUs)
+//            videoEncoder.offerData(dataBuffer, bufferInfo)
         }
+
         videoDecoder.onDecodeFinish = {
             Log.d(TAG, "onDecodeFinish")
+            encodeSurface.release()
             videoEncoder.queueEOS()
         }
     }
 
     private fun initEncoder(mediaFormat: MediaFormat) {
-        videoEncoder = VideoEncoderSync()
+        videoEncoder = VideoEncoderSync2()
         val mediaConfig = MediaConfig()
-        if (width != null && height != null) {
-            mediaConfig.originalWidth = mediaFormat.getInteger(MediaFormat.KEY_WIDTH)
-            mediaConfig.originalHeight = mediaFormat.getInteger(MediaFormat.KEY_HEIGHT)
-            mediaConfig.width = width!!
-            mediaConfig.height = height!!
-        } else {
-            mediaConfig.width = mediaFormat.getInteger(MediaFormat.KEY_WIDTH)
-            mediaConfig.height = mediaFormat.getInteger(MediaFormat.KEY_HEIGHT)
-        }
+
+        mediaConfig.width = mediaFormat.getInteger(MediaFormat.KEY_WIDTH)
+        mediaConfig.height = mediaFormat.getInteger(MediaFormat.KEY_HEIGHT)
 
         mediaConfig.duration = mediaFormat.getLong(MediaFormat.KEY_DURATION)
         mediaConfig.path = path
-        videoEncoder.prepare(mediaConfig, bitrate, rotateDegree)
+        videoEncoder.prepare(mediaConfig, bitrate)
+
+        initTexture()
 
         videoEncoder.onSampleEncode = { dataBuffer, bufferInfo ->
             Log.d(TAG, "onSampleEncode")
@@ -158,6 +214,7 @@ class VideoCoderSync(private val path: String, private val dest: String) : Runna
         mediaMuxer!!.start()
     }
 
+    private var isLooping = false
 
     private fun loop() {
         startMs?.let {
@@ -172,23 +229,46 @@ class VideoCoderSync(private val path: String, private val dest: String) : Runna
                 break
             }
 
-            videoDecoder.enqueueData()
+            if (!isLooping) {
+                videoDecoder.enqueueData()
 
-            videoDecoder.pull()
-
-            if (videoEncoder.isEOSNeed) {
-                videoEncoder.signEOS()
+                videoDecoder.pull()
             }
 
-            videoEncoder.pull()
+            if (isNewFrameAvailable) {
+
+                isLooping = true
+                isNewFrameAvailable = false
+
+                draw()
+
+                videoEncoder.pull()
+
+                videoDecoder.enqueueData()
+
+                videoDecoder.pull()
+
+                if (videoEncoder.isEOSNeed) {
+                    videoEncoder.signEOS()
+                }
+
+            }
+
+
         }
     }
 
     fun release() {
+        Log.d(TAG, "release")
         videoDecoder.release()
         videoEncoder.release()
         mediaExtractor.release()
         mediaMuxer?.release()
+
+        eglCore.release()
+        encodeSurface.release()
+        surfaceTexture.release()
+
     }
 
 }
