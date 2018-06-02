@@ -6,7 +6,6 @@ import android.media.MediaFormat
 import android.os.Build
 import android.util.Log
 import android.view.Surface
-import com.religion76.library.coder.CodecFormatUtils
 import com.religion76.library.coder.MediaConfig
 import java.nio.ByteBuffer
 
@@ -29,17 +28,22 @@ class VideoEncoderSync2 {
 
     var isEOSNeed = false
 
-    fun prepare(mediaConfig: MediaConfig, bitrate: Int? = null) {
+    fun prepare(mimeType:String, mediaInfo: MediaInfo, bitrate: Int? = null) {
         Log.d(TAG, "prepare")
 
-        encoder = MediaCodec.createEncoderByType(mediaConfig.mineType)
+        encoder = MediaCodec.createEncoderByType(mimeType)
 
-        val videoFormat = MediaFormat.createVideoFormat(mediaConfig.mineType, mediaConfig.width, mediaConfig.height)
+        val videoFormat: MediaFormat = if ( mediaInfo.getRotation() > 0) {
+            MediaFormat.createVideoFormat(mimeType, mediaInfo.getHeight(), mediaInfo.getWidth())
+        } else {
+            MediaFormat.createVideoFormat(mimeType, mediaInfo.getWidth(), mediaInfo.getHeight())
+        }
+
         //ColorFormat should be MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface
         videoFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
-        videoFormat.setInteger(MediaFormat.KEY_BIT_RATE, bitrate ?: mediaConfig.getCompressBitrate().toInt())
-        videoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, mediaConfig.frameRate)
-        videoFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, mediaConfig.iFrameInterval)
+        videoFormat.setInteger(MediaFormat.KEY_BIT_RATE, bitrate ?: mediaInfo.getBitrate())
+        videoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, MediaInfo.FRAME_RATE)
+        videoFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, MediaInfo.IFRAMEINTERVAL)
         videoFormat.setInteger("rotation-degrees", 90)
 
         Log.d(TAG, "on encoder configured $videoFormat")
@@ -127,9 +131,6 @@ class VideoEncoderSync2 {
     }
 
     fun queueEOS() {
-//        if (!isEncodeFinish) {
-//            isEOSNeed = true
-//        }
         isEncodeFinish = true
     }
 
@@ -138,30 +139,6 @@ class VideoEncoderSync2 {
         if (inputBufferIndex > 0) {
             encoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
             isEOSNeed = false
-        }
-    }
-
-    fun offerData(data: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) {
-        if (isEncodeFinish) {
-            return
-        }
-
-        val inputBufferIndex = encoder.dequeueInputBuffer(DEFAULT_QUEUE_TIMEOUT)
-        if (inputBufferIndex > 0) {
-            if (isEOSNeed) {
-                Log.d(TAG, "------------- queue EOS ------------")
-                encoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                isEOSNeed = false
-            } else {
-                val inputBuffer = getInputBuffer(inputBufferIndex)
-                inputBuffer.clear()
-                inputBuffer.put(data)
-                if (bufferInfo.size < 0) {
-                    encoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                } else {
-                    encoder.queueInputBuffer(inputBufferIndex, bufferInfo.offset, bufferInfo.size, bufferInfo.presentationTimeUs, bufferInfo.flags)
-                }
-            }
         }
     }
 

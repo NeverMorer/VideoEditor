@@ -1,7 +1,6 @@
 package com.religion76.videoexecutor
 
 import android.Manifest
-import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.os.Build
 import android.support.v7.app.AppCompatActivity
@@ -12,9 +11,8 @@ import android.provider.MediaStore
 import android.support.v4.widget.SimpleCursorAdapter
 import android.util.Log
 import android.view.View
-import com.religion76.library.extractor.FrameExtractor
 import com.religion76.library.sync.VideoCoderSync
-import com.religion76.library.sync.VideoCoderSync2
+import com.religion76.library.sync.VideoCoderSync3
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.item_video.view.*
 import java.io.File
@@ -37,7 +35,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    var coder: VideoCoderSync2? = null
+    var coder: VideoCoderSync3? = null
 
     val handler = Handler()
 
@@ -69,7 +67,7 @@ class MainActivity : AppCompatActivity() {
                 Log.d(VideoCoderSync.TAG, " rotate degree:$d")
             }
 
-            coder = VideoCoderSync2(path, FILE_PATH)
+            coder = VideoCoderSync3(path, FILE_PATH)
             coder?.withTrim(1000, 5000)
 //            coder.withScale(480, 480)M
             Thread(coder).start()

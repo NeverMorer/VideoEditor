@@ -1,25 +1,17 @@
 package com.religion76.library.sync
 
-import android.graphics.SurfaceTexture
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMuxer
-import android.opengl.GLES20
-import android.os.Handler
 import android.util.Log
-import android.view.Surface
-import com.religion76.library.coder.MediaConfig
-import com.religion76.library.gles.EglCore
-import com.religion76.library.gles.FullFrameRect
-import com.religion76.library.gles.Texture2dProgram
-import com.religion76.library.gles.WindowSurface
+import com.religion76.library.gles.*
 import java.util.*
 
 /**
  * Created by SunChao
  * on 2018/5/24.
  */
-class VideoCoderSync2(private val path: String, private val dest: String) : Runnable, SurfaceTexture.OnFrameAvailableListener {
+class VideoCoderSync3(private val path: String, private val dest: String) : Runnable{
 
     companion object {
         const val TAG = "VideoCoderSync2"
@@ -31,19 +23,13 @@ class VideoCoderSync2(private val path: String, private val dest: String) : Runn
 
     private lateinit var mediaExtractor: MediaExtractor
 
-    private lateinit var surfaceTexture: SurfaceTexture
-
     private lateinit var encodeSurface: WindowSurface
 
-    private var textureId: Int? = null
-
-    private lateinit var fullFrameRect: FullFrameRect
+    private lateinit var outputSurface: CodecOutputSurface2
 
     private lateinit var mediaInfo: MediaInfo
 
     private lateinit var eglCore: EglCore
-
-    private val tmpMatrix = FloatArray(16)
 
     private var mediaMuxer: MediaMuxer? = null
 
@@ -53,8 +39,6 @@ class VideoCoderSync2(private val path: String, private val dest: String) : Runn
     private var endMs: Long? = null
 
     private var bitrate: Int? = null
-
-    private lateinit var handler: Handler
 
     override fun run() {
 
@@ -86,11 +70,12 @@ class VideoCoderSync2(private val path: String, private val dest: String) : Runn
 
         for (i in 0..mediaExtractor.trackCount) {
             val trackFormat = mediaExtractor.getTrackFormat(i)
-            if (trackFormat.getString(MediaFormat.KEY_MIME).startsWith("video")) {
+            val mimeType = trackFormat.getString(MediaFormat.KEY_MIME)
+            if (mimeType.startsWith("video")) {
                 mediaExtractor.selectTrack(i)
 
                 //Encoder must be init first
-                initEncoder(trackFormat)
+                initEncoder(mimeType)
                 initDecoder(trackFormat)
 
                 return true
@@ -108,16 +93,7 @@ class VideoCoderSync2(private val path: String, private val dest: String) : Runn
 
         encodeSurface.makeCurrent()
 
-        fullFrameRect = FullFrameRect(Texture2dProgram(Texture2dProgram.ProgramType.TEXTURE_EXT))
-        textureId = fullFrameRect.createTextureObject()
-
-        surfaceTexture = SurfaceTexture(textureId!!)
-        surfaceTexture.setOnFrameAvailableListener(this)
-    }
-
-    override fun onFrameAvailable(st: SurfaceTexture?) {
-        Log.d(TAG, "onFrameAvailable")
-        isNewFrameAvailable = true
+        outputSurface = CodecOutputSurface2()
     }
 
     @Transient
@@ -127,34 +103,32 @@ class VideoCoderSync2(private val path: String, private val dest: String) : Runn
 
     private fun draw() {
         Log.d(TAG, "draw")
-        textureId?.let {
 
-            surfaceTexture.updateTexImage()
-            surfaceTexture.getTransformMatrix(tmpMatrix)
+        outputSurface.awaitNewImage()
 
-            encodeSurface.makeCurrent()
+        encodeSurface.makeCurrent()
 
-            GLES20.glViewport(0, 0, mediaInfo.getWidth(), mediaInfo.getHeight())
-            fullFrameRect.drawFrame(it, tmpMatrix)
+        outputSurface.drawImage(false)
 
-            if (bufferTimeQueue.isNotEmpty()) {
-                encodeSurface.setPresentationTime(bufferTimeQueue.poll() * 1000)
-            }
-            encodeSurface.swapBuffers()
+        if (bufferTimeQueue.isNotEmpty()) {
+            encodeSurface.setPresentationTime(bufferTimeQueue.poll() * 1000)
         }
+        encodeSurface.swapBuffers()
+
+        isNewFrameAvailable = true
     }
 
     private fun initDecoder(mediaFormat: MediaFormat) {
         videoDecoder = VideoDecoderSync2()
 
-        videoDecoder.prepare(mediaFormat, mediaExtractor, Surface(surfaceTexture))
+        videoDecoder.prepare(mediaFormat, mediaExtractor, outputSurface.surface)
 
         videoDecoder.onOutputBufferGenerate = { dataBuffer, bufferInfo ->
             Log.d(TAG, "onOutputBufferGenerate")
             Log.d(TAG, "decode_presentationTimeUs: ${bufferInfo.presentationTimeUs}")
 
             bufferTimeQueue.offer(bufferInfo.presentationTimeUs)
-//            videoEncoder.offerData(dataBuffer, bufferInfo)
+            draw()
         }
 
         videoDecoder.onDecodeFinish = {
@@ -164,16 +138,10 @@ class VideoCoderSync2(private val path: String, private val dest: String) : Runn
         }
     }
 
-    private fun initEncoder(mediaFormat: MediaFormat) {
+    private fun initEncoder(mimeType:String) {
         videoEncoder = VideoEncoderSync2()
-        val mediaConfig = MediaConfig()
 
-        mediaConfig.width = mediaFormat.getInteger(MediaFormat.KEY_WIDTH)
-        mediaConfig.height = mediaFormat.getInteger(MediaFormat.KEY_HEIGHT)
-
-        mediaConfig.duration = mediaFormat.getLong(MediaFormat.KEY_DURATION)
-        mediaConfig.path = path
-        videoEncoder.prepare(mediaConfig, bitrate)
+        videoEncoder.prepare(mimeType, mediaInfo, bitrate)
 
         initTexture()
 
@@ -199,17 +167,6 @@ class VideoCoderSync2(private val path: String, private val dest: String) : Runn
 
         mediaMuxer = MediaMuxer(dest, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
         muxTrackIndex = mediaMuxer!!.addTrack(videoEncoder.getOutputFormat())
-
-        // Set up the orientation and starting time for extractor.
-//        val retriever = MediaMetadataRetriever()
-//        retriever.setDataSource(path)
-//        val degreesString = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
-//        if (degreesString != null) {
-//            val degrees = Integer.parseInt(degreesString)
-//            if (degrees >= 0) {
-//                mediaMuxer!!.setOrientationHint(degrees)
-//            }
-//        }
 
         mediaMuxer!!.start()
     }
@@ -240,8 +197,6 @@ class VideoCoderSync2(private val path: String, private val dest: String) : Runn
                 isLooping = true
                 isNewFrameAvailable = false
 
-                draw()
-
                 videoEncoder.pull()
 
                 videoDecoder.enqueueData()
@@ -251,10 +206,7 @@ class VideoCoderSync2(private val path: String, private val dest: String) : Runn
                 if (videoEncoder.isEOSNeed) {
                     videoEncoder.signEOS()
                 }
-
             }
-
-
         }
     }
 
@@ -267,7 +219,7 @@ class VideoCoderSync2(private val path: String, private val dest: String) : Runn
 
         eglCore.release()
         encodeSurface.release()
-        surfaceTexture.release()
+        outputSurface.release()
 
     }
 
