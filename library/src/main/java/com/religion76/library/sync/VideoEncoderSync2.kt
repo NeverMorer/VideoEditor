@@ -28,12 +28,12 @@ class VideoEncoderSync2 {
 
     var isEOSNeed = false
 
-    fun prepare(mimeType:String, mediaInfo: MediaInfo, bitrate: Int? = null) {
+    fun prepare(mimeType: String, mediaInfo: MediaInfo, bitrate: Int? = null) {
         Log.d(TAG, "prepare")
 
         encoder = MediaCodec.createEncoderByType(mimeType)
 
-        val videoFormat: MediaFormat = if ( mediaInfo.getRotation() > 0) {
+        val videoFormat: MediaFormat = if (mediaInfo.getRotation() > 0) {
             MediaFormat.createVideoFormat(mimeType, mediaInfo.getHeight(), mediaInfo.getWidth())
         } else {
             MediaFormat.createVideoFormat(mimeType, mediaInfo.getWidth(), mediaInfo.getHeight())
@@ -44,7 +44,6 @@ class VideoEncoderSync2 {
         videoFormat.setInteger(MediaFormat.KEY_BIT_RATE, bitrate ?: mediaInfo.getBitrate())
         videoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, MediaInfo.FRAME_RATE)
         videoFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, MediaInfo.IFRAMEINTERVAL)
-        videoFormat.setInteger("rotation-degrees", 90)
 
         Log.d(TAG, "on encoder configured $videoFormat")
 

@@ -80,7 +80,7 @@ class FrameExtractor(private val videoPath: String, private val width: Int, priv
             Log.d(TAG, "onOutputBufferGenerate " + Thread.currentThread().id)
             //must call on the same thread which CodecOutputSurface created
             outputSurface.awaitNewImage()
-            outputSurface.drawImage(false)
+            outputSurface.drawImage(true)
             onExtractProgressChange?.invoke(outputSurface.frame, bufferInfo.presentationTimeUs)
         }
 

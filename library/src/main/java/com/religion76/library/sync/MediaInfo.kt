@@ -44,4 +44,20 @@ class MediaInfo private constructor(private var width: Int = 0,
     fun getDuration() = duration
     fun getBitrate() = bitrate
     fun getRotation() = rotation
+
+    fun setScale(width: Int, height: Int){
+        this.width = width
+        this.height = height
+    }
+
+    override fun toString(): String {
+
+        return "width:${getWidth()} " +
+                "height:${getHeight()}" +
+                "duration:${getDuration()}" +
+                "bitrate:${getBitrate()}" +
+                "rotation:${getRotation()}"
+
+
+    }
 }

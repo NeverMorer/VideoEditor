@@ -11,7 +11,7 @@ import java.util.*
  * Created by SunChao
  * on 2018/5/24.
  */
-class VideoCoderSync3(private val path: String, private val dest: String) : Runnable{
+class VideoCoderSync3(private val path: String, private val dest: String) : Runnable {
 
     companion object {
         const val TAG = "VideoCoderSync2"
@@ -40,30 +40,43 @@ class VideoCoderSync3(private val path: String, private val dest: String) : Runn
 
     private var bitrate: Int? = null
 
-    override fun run() {
+    private var scaleWidth: Int? = null
+    private var scaleHeight: Int? = null
 
+    override fun run() {
         if (prepare()) {
             loop()
         }
     }
 
     //it's should be support via use GLES on the way to encoder
-    private fun withScale(width: Int, height: Int) {
-
+    fun withScale(width: Int, height: Int) {
+        scaleWidth = width
+        scaleHeight = height
+        Log.d(TAG, "setting scale width:$width  height:$height")
     }
 
     fun withTrim(startMs: Long? = null, endMs: Long? = null) {
         this.startMs = startMs
         this.endMs = endMs
+        Log.d(TAG, "setting trim start:$startMs  end:$endMs")
     }
 
     fun setBitrate(bitrate: Int) {
         this.bitrate = bitrate
+        Log.d(TAG, "setting bitrate:$bitrate")
     }
 
     private fun prepare(): Boolean {
 
         mediaInfo = MediaInfo.getMediaInfo(path)
+
+        Log.d(TAG, "original width:${mediaInfo.getWidth()}  height:${mediaInfo.getHeight()}")
+        Log.d(TAG, "original bitrate:${mediaInfo.getBitrate()}")
+
+        if (scaleWidth != null && scaleHeight != null) {
+            mediaInfo.setScale(scaleWidth!!, scaleHeight!!)
+        }
 
         mediaExtractor = MediaExtractor()
         mediaExtractor.setDataSource(path)
@@ -138,7 +151,7 @@ class VideoCoderSync3(private val path: String, private val dest: String) : Runn
         }
     }
 
-    private fun initEncoder(mimeType:String) {
+    private fun initEncoder(mimeType: String) {
         videoEncoder = VideoEncoderSync2()
 
         videoEncoder.prepare(mimeType, mediaInfo, bitrate)
@@ -181,14 +194,13 @@ class VideoCoderSync3(private val path: String, private val dest: String) : Runn
         while (true) {
 
             if (videoDecoder.isDecodeFinish && videoEncoder.isEncodeFinish) {
-                Log.d(TAG, "there")
+                Log.d(TAG, "end")
                 release()
                 break
             }
 
             if (!isLooping) {
                 videoDecoder.enqueueData()
-
                 videoDecoder.pull()
             }
 
@@ -198,9 +210,7 @@ class VideoCoderSync3(private val path: String, private val dest: String) : Runn
                 isNewFrameAvailable = false
 
                 videoEncoder.pull()
-
                 videoDecoder.enqueueData()
-
                 videoDecoder.pull()
 
                 if (videoEncoder.isEOSNeed) {
