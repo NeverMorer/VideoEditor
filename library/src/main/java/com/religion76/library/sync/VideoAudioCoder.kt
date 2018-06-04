@@ -66,6 +66,10 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
                 videoExtractTrackIndex = i
                 initVideoCoder(trackFormat)
             } else if (mimeType.startsWith("audio")) {
+//                Log.d("zzz", "audio format:$trackFormat")
+//                val byteBuffer = trackFormat.getByteBuffer("csd-0")
+//                Log.d("zzz", "csd-0 buffer:$byteBuffer")
+
                 audioExtractTrackIndex = i
                 initAudioCoder(trackFormat)
             }
@@ -73,8 +77,6 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
                 break
             }
         }
-
-//        mediaMuxer.start()
 
         return videoExtractTrackIndex != -1
     }

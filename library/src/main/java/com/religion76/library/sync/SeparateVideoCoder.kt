@@ -72,11 +72,9 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
         initEncoder(trackFormat.getString(MediaFormat.KEY_MIME))
         initDecoder(trackFormat)
 
-        muxTrackIndex = mediaMuxer.addTrack(videoEncoder.getOutputFormat())
+//        muxTrackIndex = mediaMuxer.addTrack(videoEncoder.getOutputFormat())
 
-        mediaMuxer.start()
-
-        Log.d(VideoAudioCoder.TAG, "video muxer track index:$muxTrackIndex")
+//        Log.d(VideoAudioCoder.TAG, "video muxer track index:$muxTrackIndex")
     }
 
     private fun initTexture() {
@@ -141,10 +139,12 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
 
         videoEncoder.onSampleEncode = { dataBuffer, bufferInfo ->
             Log.d(TAG, "onSampleEncode")
-//            if (muxTrackIndex == -1) {
-//                muxTrackIndex = mediaMuxer!!.addTrack(videoEncoder.getOutputFormat())
-//                isMuxTrackAdded = true
-//            }
+
+            //video encode need format include csd-0 & csd-1 data
+            if (muxTrackIndex == -1) {
+                muxTrackIndex = mediaMuxer.addTrack(videoEncoder.getOutputFormat())
+                mediaMuxer.start()
+            }
 
             Log.d(TAG, "encode_presentationTimeUs: ${bufferInfo.presentationTimeUs}")
 
@@ -164,58 +164,29 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
 
     fun drain() {
 
-//        if (!isCoderDone) {
-//            if (videoDecoder.isDecodeFinish && videoEncoder.isEncodeFinish) {
-//                Log.d(TAG, "end")
-//                isCoderDone = true
-//                release()
-//            } else {
-//                if (!isLooping) {
-//                    videoDecoder.enqueueData()
-//                    videoDecoder.pull()
-//                }
-//
-//                if (isNewFrameAvailable) {
-//
-//                    isLooping = true
-//                    isNewFrameAvailable = false
-//
-//                    videoEncoder.pull()
-//                    videoDecoder.enqueueData()
-//                    videoDecoder.pull()
-//
-//                    if (videoEncoder.isEOSNeed) {
-//                        videoEncoder.signEOS()
-//                    }
-//                }
-//            }
-//        }
-
-        while (true) {
-
+        if (!isCoderDone) {
             if (videoDecoder.isDecodeFinish && videoEncoder.isEncodeFinish) {
                 Log.d(TAG, "end")
                 isCoderDone = true
                 release()
-                break
-            }
+            } else {
+                if (!isLooping) {
+                    videoDecoder.enqueueData()
+                    videoDecoder.pull()
+                }
 
-            if (!isLooping) {
-                videoDecoder.enqueueData()
-                videoDecoder.pull()
-            }
+                if (isNewFrameAvailable) {
 
-            if (isNewFrameAvailable) {
+                    isLooping = true
+                    isNewFrameAvailable = false
 
-                isLooping = true
-                isNewFrameAvailable = false
+                    videoEncoder.pull()
+                    videoDecoder.enqueueData()
+                    videoDecoder.pull()
 
-                videoEncoder.pull()
-                videoDecoder.enqueueData()
-                videoDecoder.pull()
-
-                if (videoEncoder.isEOSNeed) {
-                    videoEncoder.signEOS()
+                    if (videoEncoder.isEOSNeed) {
+                        videoEncoder.signEOS()
+                    }
                 }
             }
         }

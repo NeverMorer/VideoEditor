@@ -36,8 +36,8 @@ class SeparateAudioCoder(private val mediaMuxer: MediaMuxer, private val mediaEx
         initEncoder(trackFormat)
         initDecoder(trackFormat)
 
-//        muxTrackIndex = mediaMuxer.addTrack(audioEncoder.getOutputFormat())
-        Log.d("zzz", "audio mux track index:$muxTrackIndex")
+        //audio add muxer track here because this mediaFormat form MediaExtractor include csd-0
+        muxTrackIndex = mediaMuxer.addTrack(audioEncoder.getOutputFormat())
     }
 
     private fun initDecoder(mediaFormat: MediaFormat) {
@@ -64,10 +64,6 @@ class SeparateAudioCoder(private val mediaMuxer: MediaMuxer, private val mediaEx
 
         audioEncoder.onSampleEncode = { dataBuffer, bufferInfo ->
             Log.d(TAG, "onSampleEncode")
-//            if (muxTrackIndex == -1) {
-//                muxTrackIndex = mediaMuxer.addTrack(audioEncoder.getOutputFormat())
-//                isMuxTrackAdded = true
-//            }
 
             Log.d(TAG, "encode_presentationTimeUs: ${bufferInfo.presentationTimeUs}")
 
@@ -76,7 +72,7 @@ class SeparateAudioCoder(private val mediaMuxer: MediaMuxer, private val mediaEx
                 videoDecoder.queueEOS()
                 audioEncoder.queueEOS()
             } else {
-//                mediaMuxer.writeSampleData(muxTrackIndex, dataBuffer, bufferInfo)
+                mediaMuxer.writeSampleData(muxTrackIndex, dataBuffer, bufferInfo)
             }
         }
     }
@@ -92,6 +88,8 @@ class SeparateAudioCoder(private val mediaMuxer: MediaMuxer, private val mediaEx
                 videoDecoder.enqueueData()
 
                 videoDecoder.pull()
+
+                audioEncoder.pull()
 
                 if (audioEncoder.isEOSNeed) {
                     audioEncoder.signEOS()
