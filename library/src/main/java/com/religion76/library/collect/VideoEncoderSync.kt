@@ -1,4 +1,4 @@
-package com.religion76.library.sync
+package com.religion76.library.collect
 
 import android.media.MediaCodec
 import android.media.MediaCodecInfo
@@ -7,13 +7,14 @@ import android.os.Build
 import android.util.Log
 import android.view.Surface
 import com.religion76.library.coder.MediaConfig
+import com.religion76.library.sync.MediaInfo
 import java.nio.ByteBuffer
 
 /**
  * Created by SunChao
  * on 2018/3/3.
  */
-class VideoEncoderSync2 {
+class VideoEncoderSync {
 
     companion object {
         private val TAG = "MediaCoder_Encoder2"
@@ -22,7 +23,7 @@ class VideoEncoderSync2 {
 
     private lateinit var encoder: MediaCodec
 
-    lateinit var surface: Surface
+    private lateinit var surface: Surface
 
     var isEncodeFinish = false
 
@@ -58,6 +59,8 @@ class VideoEncoderSync2 {
             outputBuffers = encoder.outputBuffers
         }
     }
+
+    fun getSurface() = surface
 
     fun prepare(mediaFormat: MediaFormat) {
 
@@ -131,7 +134,7 @@ class VideoEncoderSync2 {
 
 
     fun drain() {
-        while (true){
+        while (true) {
             val outputBufferIndex = encoder.dequeueOutputBuffer(bufferInfo, 0)
             if (outputBufferIndex > 0) {
                 Log.d(TAG, "encoder output data index:$outputBufferIndex")
@@ -162,14 +165,22 @@ class VideoEncoderSync2 {
     }
 
     fun queueEOS() {
-        isEncodeFinish = true
+        isEOSNeed = true
     }
 
     fun signEOS() {
-        val inputBufferIndex = encoder.dequeueInputBuffer(DEFAULT_QUEUE_TIMEOUT)
-        if (inputBufferIndex > 0) {
-            encoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-            isEOSNeed = false
+//        val inputBufferIndex = encoder.dequeueInputBuffer(DEFAULT_QUEUE_TIMEOUT)
+//        if (inputBufferIndex > 0) {
+//            encoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+//            isEOSNeed = false
+//        }
+//        if (isEOSNeed) {
+//            encoder.signalEndOfInputStream()
+//            isEOSNeed = false
+//        }
+
+        if (isEOSNeed) {
+            isEncodeFinish = true
         }
     }
 

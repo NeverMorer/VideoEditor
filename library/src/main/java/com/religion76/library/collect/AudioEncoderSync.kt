@@ -1,4 +1,4 @@
-package com.religion76.library.sync
+package com.religion76.library.collect
 
 import android.media.MediaCodec
 import android.media.MediaCodecInfo
@@ -145,8 +145,6 @@ class AudioEncoderSync {
                 isEOSNeed = false
             } else {
                 val inputBuffer = getInputBuffer(inputBufferIndex)
-                Log.d("zzz", "buf_size:${inputBuffer.capacity()}")
-                Log.d("zzz", "data_size:${data.capacity()}")
                 inputBuffer.clear()
                 inputBuffer.put(data)
                 if (bufferInfo.size < 0) {

@@ -1,9 +1,10 @@
-package com.religion76.library.sync
+package com.religion76.library.collect
 
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.util.Log
+import com.religion76.library.sync.VideoDecoderSync
 
 /**
  * Created by SunChao
@@ -24,14 +25,12 @@ class SeparateAudioCoder(private val mediaMuxer: MediaMuxer, private val mediaEx
     private var startMs: Long? = null
     private var endMs: Long? = null
 
-
     fun withTrim(startMs: Long? = null, endMs: Long? = null) {
         this.startMs = startMs
         this.endMs = endMs
     }
 
     fun prepare(trackFormat:MediaFormat) {
-
         //Encoder must be init first
         initEncoder(trackFormat)
         initDecoder(trackFormat)

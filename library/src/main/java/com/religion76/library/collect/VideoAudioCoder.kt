@@ -1,4 +1,4 @@
-package com.religion76.library.sync
+package com.religion76.library.collect
 
 import android.media.MediaExtractor
 import android.media.MediaFormat
@@ -16,10 +16,9 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
     }
 
     private lateinit var videoCoder: SeparateVideoCoder
-    private lateinit var audioCoder: SeparateAudioCoder
+    private lateinit var audioCoder: SeparateAudioWriter
 
     private lateinit var mediaMuxer: MediaMuxer
-
     private lateinit var mediaExtractor: MediaExtractor
 
     private var startMs: Long? = null
@@ -66,10 +65,6 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
                 videoExtractTrackIndex = i
                 initVideoCoder(trackFormat)
             } else if (mimeType.startsWith("audio")) {
-//                Log.d("zzz", "audio format:$trackFormat")
-//                val byteBuffer = trackFormat.getByteBuffer("csd-0")
-//                Log.d("zzz", "csd-0 buffer:$byteBuffer")
-
                 audioExtractTrackIndex = i
                 initAudioCoder(trackFormat)
             }
@@ -92,7 +87,7 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
     }
 
     private fun initAudioCoder(trackFormat: MediaFormat) {
-        audioCoder = SeparateAudioCoder(mediaMuxer, mediaExtractor)
+        audioCoder = SeparateAudioWriter(mediaMuxer, mediaExtractor)
         audioCoder.withTrim(startMs, endMs)
         audioCoder.prepare(trackFormat)
     }
@@ -142,6 +137,7 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
 
     fun release() {
         Log.d(TAG, "release")
+        mediaExtractor.release()
         mediaMuxer.stop()
         mediaMuxer.release()
     }

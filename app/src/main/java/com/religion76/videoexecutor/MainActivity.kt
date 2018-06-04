@@ -11,9 +11,8 @@ import android.provider.MediaStore
 import android.support.v4.widget.SimpleCursorAdapter
 import android.util.Log
 import android.view.View
-import com.religion76.library.sync.SeparateAudioCoder
-import com.religion76.library.sync.VideoAudioCoder
-import com.religion76.library.sync.VideoCoderSync3
+import com.religion76.library.collect.SeparateAudioCoder
+import com.religion76.library.collect.VideoAudioCoder
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.item_video.view.*
 import java.io.File

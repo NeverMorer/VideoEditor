@@ -1,10 +1,12 @@
-package com.religion76.library.sync
+package com.religion76.library.collect
 
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.util.Log
 import com.religion76.library.gles.*
+import com.religion76.library.sync.MediaInfo
+import com.religion76.library.sync.VideoDecoderSync2
 import java.util.*
 
 /**
@@ -17,7 +19,7 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
         const val TAG = "SeparateVideoCoder"
     }
 
-    private lateinit var videoEncoder: VideoEncoderSync2
+    private lateinit var videoEncoder: VideoEncoderSync
 
     private lateinit var videoDecoder: VideoDecoderSync2
 
@@ -38,7 +40,6 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
 
     private var scaleWidth: Int? = null
     private var scaleHeight: Int? = null
-
 
     //it's should be support via use GLES on the way to encoder
     fun withScale(width: Int? = null, height: Int? = null) {
@@ -72,16 +73,13 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
         initEncoder(trackFormat.getString(MediaFormat.KEY_MIME))
         initDecoder(trackFormat)
 
-//        muxTrackIndex = mediaMuxer.addTrack(videoEncoder.getOutputFormat())
-
-//        Log.d(VideoAudioCoder.TAG, "video muxer track index:$muxTrackIndex")
     }
 
     private fun initTexture() {
 
         eglCore = EglCore(null, EglCore.FLAG_RECORDABLE)
 
-        encodeSurface = WindowSurface(eglCore, videoEncoder.surface, true)
+        encodeSurface = WindowSurface(eglCore, videoEncoder.getSurface(), true)
 
         encodeSurface.makeCurrent()
 
@@ -131,7 +129,7 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
     }
 
     private fun initEncoder(mimeType: String) {
-        videoEncoder = VideoEncoderSync2()
+        videoEncoder = VideoEncoderSync()
 
         videoEncoder.prepare(mimeType, mediaInfo, bitrate)
 
@@ -180,13 +178,14 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
                     isLooping = true
                     isNewFrameAvailable = false
 
-                    videoEncoder.pull()
-                    videoDecoder.enqueueData()
-                    videoDecoder.pull()
+                    videoEncoder.drain()
 
                     if (videoEncoder.isEOSNeed) {
                         videoEncoder.signEOS()
                     }
+
+                    videoDecoder.enqueueData()
+                    videoDecoder.pull()
                 }
             }
         }
