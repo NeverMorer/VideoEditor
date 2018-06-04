@@ -106,6 +106,7 @@ class ExtractFrameDecoder {
                 onSampleFormatConfirmed?.invoke(sampleMediaFormat)
 
                 startDecode()
+
                 break
             }
         }

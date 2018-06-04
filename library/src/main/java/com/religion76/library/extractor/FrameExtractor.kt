@@ -24,10 +24,6 @@ class FrameExtractor(private val videoPath: String, private val width: Int, priv
 
     private lateinit var outputSurface: CodecOutputSurface
 
-    var duration: Long = 0
-
-    var isPrepared = false
-
     var onExtractProgressChange: ((frame: Bitmap, timeUs: Long) -> Unit)? = null
 
     var onExtractFinished: (() -> Unit)? = null
@@ -38,31 +34,11 @@ class FrameExtractor(private val videoPath: String, private val width: Int, priv
         init()
     }
 
-    private lateinit var mediaFormat: MediaFormat
-
     private var isReleased: Boolean = false
 
     private fun init() {
 
         Log.d(TAG, "init " + Thread.currentThread().id)
-
-        val retrieverSrc = MediaMetadataRetriever()
-        retrieverSrc.setDataSource(videoPath)
-
-        var height = retrieverSrc.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT).toInt()
-        var width = retrieverSrc.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH).toInt()
-
-        val degreesString = retrieverSrc.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
-        if (degreesString != null) {
-            val d = Integer.parseInt(degreesString)
-            if (d > 0) {
-                Log.d(TAG, "width: $width  height:$height  rotate:$d")
-
-                height += width
-                width = height - width
-                height -= width
-            }
-        }
 
         outputSurface = CodecOutputSurface(width, height)
 
@@ -70,9 +46,6 @@ class FrameExtractor(private val videoPath: String, private val width: Int, priv
 
         videoDecoder.onSampleFormatConfirmed = {
             Log.d(TAG, "onSampleFormatConfirmed " + Thread.currentThread().id)
-            mediaFormat = it
-            duration = it.getLong(MediaFormat.KEY_DURATION)
-            isPrepared = true
             onCatcherInit?.invoke()
         }
 
