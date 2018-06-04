@@ -1,18 +1,17 @@
 package com.religion76.library.sync
 
 import android.media.MediaCodec
+import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.os.Build
 import android.util.Log
-import com.religion76.library.coder.CodecFormatUtils
-import com.religion76.library.coder.MediaConfig
 import java.nio.ByteBuffer
 
 /**
  * Created by SunChao
  * on 2018/3/3.
  */
-class VideoEncoderSync {
+class AudioEncoderSync {
 
     companion object {
         private val TAG = "MediaCoder_Encoder"
@@ -25,24 +24,21 @@ class VideoEncoderSync {
 
     var isEOSNeed = false
 
-    fun prepare(mediaConfig: MediaConfig, bitrate: Int? = null, rotateDegree: Int? = null) {
+    fun prepare(mediaFormat: MediaFormat) {
         Log.d(TAG, "prepare")
 
-        encoder = MediaCodec.createEncoderByType(mediaConfig.mineType)
+        val mimeType = mediaFormat.getString(MediaFormat.KEY_MIME)
+        encoder = MediaCodec.createEncoderByType(mimeType)
 
-        val videoFormat = MediaFormat.createVideoFormat(mediaConfig.mineType, mediaConfig.width, mediaConfig.height)
-        videoFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, CodecFormatUtils.getVideoCompatibilityColorFormat(encoder.codecInfo, mediaConfig.mineType))
-        videoFormat.setInteger(MediaFormat.KEY_BIT_RATE, bitrate ?: mediaConfig.getCompressBitrate().toInt())
-        videoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, mediaConfig.frameRate)
-        videoFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, mediaConfig.iFrameInterval)
+        val encodeFormat = MediaFormat.createAudioFormat(mimeType, mediaFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE), mediaFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT))
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && rotateDegree != null) {
-            videoFormat.setInteger(MediaFormat.KEY_ROTATION, rotateDegree)
-        }
+        encodeFormat.setInteger(MediaFormat.KEY_BIT_RATE, 96000)
+        encodeFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 100 * 1024)
+        encodeFormat.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectERLC)
 
-        Log.d(TAG, "on encoder configured $videoFormat")
+        Log.d(TAG, "on encoder configured $encodeFormat")
 
-        encoder.configure(videoFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+        encoder.configure(encodeFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
         encoder.start()
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
@@ -51,17 +47,17 @@ class VideoEncoderSync {
         }
     }
 
-    fun prepare(mediaFormat: MediaFormat) {
-
-        encoder = MediaCodec.createEncoderByType(MediaConfig().mineType)
-        encoder.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-        encoder.start()
-
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            inputBuffers = encoder.inputBuffers
-            outputBuffers = encoder.outputBuffers
-        }
-    }
+//    fun prepare(mediaFormat: MediaFormat) {
+//
+//        encoder = MediaCodec.createEncoderByType(MediaConfig().mineType)
+//        encoder.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+//        encoder.start()
+//
+//        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+//            inputBuffers = encoder.inputBuffers
+//            outputBuffers = encoder.outputBuffers
+//        }
+//    }
 
     fun getOutputFormat() = encoder.outputFormat
 
@@ -122,9 +118,10 @@ class VideoEncoderSync {
     }
 
     fun queueEOS() {
-        if (!isEncodeFinish) {
-            isEOSNeed = true
-        }
+//        if (!isEncodeFinish) {
+//            isEOSNeed = true
+//        }
+        isEncodeFinish = true
     }
 
     fun signEOS() {
@@ -148,6 +145,8 @@ class VideoEncoderSync {
                 isEOSNeed = false
             } else {
                 val inputBuffer = getInputBuffer(inputBufferIndex)
+                Log.d("zzz", "buf_size:${inputBuffer.capacity()}")
+                Log.d("zzz", "data_size:${data.capacity()}")
                 inputBuffer.clear()
                 inputBuffer.put(data)
                 if (bufferInfo.size < 0) {

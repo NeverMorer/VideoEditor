@@ -11,7 +11,8 @@ import android.provider.MediaStore
 import android.support.v4.widget.SimpleCursorAdapter
 import android.util.Log
 import android.view.View
-import com.religion76.library.sync.VideoCoderSync
+import com.religion76.library.sync.SeparateAudioCoder
+import com.religion76.library.sync.VideoAudioCoder
 import com.religion76.library.sync.VideoCoderSync3
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.item_video.view.*
@@ -35,7 +36,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    var coder: VideoCoderSync3? = null
+    var coder: VideoAudioCoder? = null
 
     val handler = Handler()
 
@@ -60,18 +61,16 @@ class MainActivity : AppCompatActivity() {
             val retrieverSrc = MediaMetadataRetriever()
             retrieverSrc.setDataSource(path)
 
-
             val degreesString = retrieverSrc.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
             if (degreesString != null) {
                 val d = Integer.parseInt(degreesString)
-                Log.d(VideoCoderSync.TAG, " rotate degree:$d")
+                Log.d(SeparateAudioCoder.TAG, " rotate degree:$d")
             }
 
-            coder = VideoCoderSync3(path, FILE_PATH)
+            coder = VideoAudioCoder(path, FILE_PATH)
             coder?.withTrim(1000, 5000)
 //            coder.withScale(480, 480)M
             Thread(coder).start()
-
         }
     }
 
