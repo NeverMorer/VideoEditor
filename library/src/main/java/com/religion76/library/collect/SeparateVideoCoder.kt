@@ -180,12 +180,12 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
 
                     videoEncoder.drain()
 
-                    if (videoEncoder.isEOSNeed) {
-                        videoEncoder.signEOS()
-                    }
-
                     videoDecoder.enqueueData()
                     videoDecoder.pull()
+                }
+
+                if (videoEncoder.isEOSNeed) {
+                    videoEncoder.signEOS()
                 }
             }
         }

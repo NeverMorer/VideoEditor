@@ -4,6 +4,7 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.util.Log
+import com.religion76.library.sync.VideoCoderSync3
 
 /**
  * Created by SunChao
@@ -50,6 +51,13 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
     fun setVideoBitrate(bitrate: Int) {
         this.bitrate = bitrate
         Log.d(TAG, "setting bitrate:$bitrate")
+    }
+
+    //it's should be support via use GLES on the way to encoder
+    fun withScale(width: Int, height: Int) {
+        scaleWidth = width
+        scaleHeight = height
+        Log.d(VideoCoderSync3.TAG, "setting scale width:$width  height:$height")
     }
 
     private fun prepare(): Boolean {
