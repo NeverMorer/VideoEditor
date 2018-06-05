@@ -1,6 +1,7 @@
 package com.religion76.library.coder
 
 import android.util.Log
+import com.religion76.library.AppLogger
 import java.io.File
 
 /**
@@ -32,7 +33,7 @@ class MediaConfig {
         return if (path != null) {
             val length = File(path).length()
             val originalBitrate = length * 8 / (duration / 1000000)
-            Log.d("MediaConfig", "original bitrate: $originalBitrate")
+            AppLogger.d("MediaConfig", "original bitrate: $originalBitrate")
             return (originalBitrate * 0.5).toLong()
         } else {
             getCalBitrate()

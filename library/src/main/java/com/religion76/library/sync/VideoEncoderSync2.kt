@@ -6,6 +6,7 @@ import android.media.MediaFormat
 import android.os.Build
 import android.util.Log
 import android.view.Surface
+import com.religion76.library.AppLogger
 import com.religion76.library.coder.MediaConfig
 import java.nio.ByteBuffer
 
@@ -29,7 +30,7 @@ class VideoEncoderSync2 {
     var isEOSNeed = false
 
     fun prepare(mimeType: String, mediaInfo: MediaInfo, bitrate: Int? = null) {
-        Log.d(TAG, "prepare")
+        AppLogger.d(TAG, "prepare")
 
         encoder = MediaCodec.createEncoderByType(mimeType)
 
@@ -45,7 +46,7 @@ class VideoEncoderSync2 {
         videoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, MediaInfo.FRAME_RATE)
         videoFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, MediaInfo.IFRAMEINTERVAL)
 
-        Log.d(TAG, "on encoder configured $videoFormat")
+        AppLogger.d(TAG, "on encoder configured $videoFormat")
 
         encoder.configure(videoFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
 
@@ -105,21 +106,21 @@ class VideoEncoderSync2 {
     fun pull(): Boolean {
         val outputBufferIndex = encoder.dequeueOutputBuffer(bufferInfo, 0)
         if (outputBufferIndex > 0) {
-            Log.d(TAG, "encoder output data index:$outputBufferIndex")
+            AppLogger.d(TAG, "encoder output data index:$outputBufferIndex")
             val outputBuffer = getOutputBuffer(outputBufferIndex)
             when {
-                outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER -> Log.d(TAG, "encoder output try again later")
+                outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER -> AppLogger.d(TAG, "encoder output try again later")
                 outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                    Log.d(TAG, "encoder output format changed")
+                    AppLogger.d(TAG, "encoder output format changed")
                     onOutputFormatChanged?.invoke(encoder.outputFormat)
                 }
                 bufferInfo.flags.and(MediaCodec.BUFFER_FLAG_END_OF_STREAM) == 0 -> {
-                    Log.d(TAG, "encoder buffer output ")
+                    AppLogger.d(TAG, "encoder buffer output ")
                     onSampleEncode?.invoke(outputBuffer, bufferInfo)
                     encoder.releaseOutputBuffer(outputBufferIndex, false)
                 }
                 else -> {
-                    Log.d(TAG, "=== encoder buffer end of stream ===")
+                    AppLogger.d(TAG, "=== encoder buffer end of stream ===")
                     isEncodeFinish = true
                     return false
                 }
@@ -134,25 +135,25 @@ class VideoEncoderSync2 {
         while (true){
             val outputBufferIndex = encoder.dequeueOutputBuffer(bufferInfo, 0)
             if (outputBufferIndex > 0) {
-                Log.d(TAG, "encoder output data index:$outputBufferIndex")
+                AppLogger.d(TAG, "encoder output data index:$outputBufferIndex")
                 val outputBuffer = getOutputBuffer(outputBufferIndex)
                 when {
                     outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER -> {
-                        Log.d(TAG, "encoder output try again later")
+                        AppLogger.d(TAG, "encoder output try again later")
                         return
                     }
                     outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                        Log.d(TAG, "encoder output format changed")
+                        AppLogger.d(TAG, "encoder output format changed")
                         onOutputFormatChanged?.invoke(encoder.outputFormat)
                     }
                     bufferInfo.flags.and(MediaCodec.BUFFER_FLAG_END_OF_STREAM) == 0 -> {
-                        Log.d(TAG, "encoder buffer output ")
+                        AppLogger.d(TAG, "encoder buffer output ")
                         onSampleEncode?.invoke(outputBuffer, bufferInfo)
                         encoder.releaseOutputBuffer(outputBufferIndex, false)
                         return
                     }
                     else -> {
-                        Log.d(TAG, "=== encoder buffer end of stream ===")
+                        AppLogger.d(TAG, "=== encoder buffer end of stream ===")
                         isEncodeFinish = true
                     }
                 }

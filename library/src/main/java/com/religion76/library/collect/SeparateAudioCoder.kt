@@ -4,6 +4,7 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.util.Log
+import com.religion76.library.AppLogger
 import com.religion76.library.sync.VideoDecoderSync
 
 /**
@@ -45,12 +46,12 @@ class SeparateAudioCoder(private val mediaMuxer: MediaMuxer, private val mediaEx
         videoDecoder.prepare(mediaFormat, mediaExtractor)
 
         videoDecoder.onOutputBufferGenerate = { dataBuffer, bufferInfo ->
-            Log.d(TAG, "onOutputBufferGenerate")
-            Log.d(TAG, "decode_presentationTimeUs: ${bufferInfo.presentationTimeUs}")
+            AppLogger.d(TAG, "onOutputBufferGenerate")
+            AppLogger.d(TAG, "decode_presentationTimeUs: ${bufferInfo.presentationTimeUs}")
             audioEncoder.offerData(dataBuffer, bufferInfo)
         }
         videoDecoder.onDecodeFinish = {
-            Log.d(TAG, "onDecodeFinish")
+            AppLogger.d(TAG, "onDecodeFinish")
             audioEncoder.queueEOS()
         }
     }
@@ -62,12 +63,12 @@ class SeparateAudioCoder(private val mediaMuxer: MediaMuxer, private val mediaEx
         audioEncoder.prepare(mediaFormat)
 
         audioEncoder.onSampleEncode = { dataBuffer, bufferInfo ->
-            Log.d(TAG, "onSampleEncode")
+            AppLogger.d(TAG, "onSampleEncode")
 
-            Log.d(TAG, "encode_presentationTimeUs: ${bufferInfo.presentationTimeUs}")
+            AppLogger.d(TAG, "encode_presentationTimeUs: ${bufferInfo.presentationTimeUs}")
 
             if (endMs != null && bufferInfo.presentationTimeUs > endMs!! * 1000 && !videoDecoder.isDecodeFinish) {
-                Log.d(TAG, "------------- end trim ------------")
+                AppLogger.d(TAG, "------------- end trim ------------")
                 videoDecoder.queueEOS()
                 audioEncoder.queueEOS()
             } else {

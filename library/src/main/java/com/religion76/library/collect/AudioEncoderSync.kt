@@ -5,6 +5,7 @@ import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.os.Build
 import android.util.Log
+import com.religion76.library.AppLogger
 import java.nio.ByteBuffer
 
 /**
@@ -25,7 +26,7 @@ class AudioEncoderSync {
     var isEOSNeed = false
 
     fun prepare(mediaFormat: MediaFormat) {
-        Log.d(TAG, "prepare")
+        AppLogger.d(TAG, "prepare")
 
         val mimeType = mediaFormat.getString(MediaFormat.KEY_MIME)
         encoder = MediaCodec.createEncoderByType(mimeType)
@@ -36,7 +37,7 @@ class AudioEncoderSync {
         encodeFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 100 * 1024)
         encodeFormat.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectERLC)
 
-        Log.d(TAG, "on encoder configured $encodeFormat")
+        AppLogger.d(TAG, "on encoder configured $encodeFormat")
 
         encoder.configure(encodeFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
         encoder.start()
@@ -93,21 +94,21 @@ class AudioEncoderSync {
     fun pull(): Boolean {
         val outputBufferIndex = encoder.dequeueOutputBuffer(bufferInfo, 0)
         if (outputBufferIndex > 0) {
-            Log.d(TAG, "encoder output data index:$outputBufferIndex")
+            AppLogger.d(TAG, "encoder output data index:$outputBufferIndex")
             val outputBuffer = getOutputBuffer(outputBufferIndex)
             when {
-                outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER -> Log.d(TAG, "encoder output try again later")
+                outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER -> AppLogger.d(TAG, "encoder output try again later")
                 outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                    Log.d(TAG, "encoder output format changed")
+                    AppLogger.d(TAG, "encoder output format changed")
                     onOutputFormatChanged?.invoke(encoder.outputFormat)
                 }
                 bufferInfo.flags.and(MediaCodec.BUFFER_FLAG_END_OF_STREAM) == 0 -> {
-                    Log.d(TAG, "encoder buffer output ")
+                    AppLogger.d(TAG, "encoder buffer output ")
                     onSampleEncode?.invoke(outputBuffer, bufferInfo)
                     encoder.releaseOutputBuffer(outputBufferIndex, false)
                 }
                 else -> {
-                    Log.d(TAG, "=== encoder buffer end of stream ===")
+                    AppLogger.d(TAG, "=== encoder buffer end of stream ===")
                     isEncodeFinish = true
                     return false
                 }
@@ -140,7 +141,7 @@ class AudioEncoderSync {
         val inputBufferIndex = encoder.dequeueInputBuffer(DEFAULT_QUEUE_TIMEOUT)
         if (inputBufferIndex > 0) {
             if (isEOSNeed) {
-                Log.d(TAG, "------------- queue EOS ------------")
+                AppLogger.d(TAG, "------------- queue EOS ------------")
                 encoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
                 isEOSNeed = false
             } else {

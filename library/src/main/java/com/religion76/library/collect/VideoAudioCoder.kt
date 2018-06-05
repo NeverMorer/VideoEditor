@@ -4,6 +4,7 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.util.Log
+import com.religion76.library.AppLogger
 import com.religion76.library.sync.VideoCoderSync3
 
 /**
@@ -47,19 +48,19 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
     fun withTrim(startMs: Long? = null, endMs: Long? = null) {
         this.startMs = startMs
         this.endMs = endMs
-        Log.d(TAG, "setting trim start:$startMs  end:$endMs")
+        AppLogger.d(TAG, "setting trim start:$startMs  end:$endMs")
     }
 
     fun setVideoBitrate(bitrate: Int) {
         this.bitrate = bitrate
-        Log.d(TAG, "setting bitrate:$bitrate")
+        AppLogger.d(TAG, "setting bitrate:$bitrate")
     }
 
     //it's should be support via use GLES on the way to encoder
     fun withScale(width: Int, height: Int) {
         scaleWidth = width
         scaleHeight = height
-        Log.d(TAG, "setting scale width:$width  height:$height")
+        AppLogger.d(TAG, "setting scale width:$width  height:$height")
     }
 
     fun setRotate(rotate: Boolean) {
@@ -143,7 +144,7 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
                 }
                 audioCoder.drain()
             } else {
-                Log.d(TAG, "---------- ending ----------")
+                AppLogger.d(TAG, "---------- ending ----------")
                 release()
                 break
             }
@@ -151,7 +152,7 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
     }
 
     fun release() {
-        Log.d(TAG, "release")
+        AppLogger.d(TAG, "release")
         mediaExtractor.release()
         mediaMuxer.stop()
         mediaMuxer.release()

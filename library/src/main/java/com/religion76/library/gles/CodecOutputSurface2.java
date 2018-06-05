@@ -30,7 +30,7 @@ public class CodecOutputSurface2
     private boolean mFrameAvailable;
 
 
-    static final boolean VERBOSE = true;
+    static final boolean VERBOSE = false;
 
     /**
      * Creates a CodecOutputSurface backed by a pbuffer with the specified dimensions.  The

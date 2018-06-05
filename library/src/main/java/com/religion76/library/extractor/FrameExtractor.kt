@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.os.Build
 import android.support.annotation.RequiresApi
 import android.util.Log
+import com.religion76.library.AppLogger
 import com.religion76.library.gles.CodecOutputSurface
 import com.religion76.library.sync.MediaInfo
 
@@ -39,7 +40,7 @@ class FrameExtractor(private val width: Int, private val height: Int, private va
 
     private fun init() {
 
-        Log.d(TAG, "init " + Thread.currentThread().id)
+        AppLogger.d(TAG, "init " + Thread.currentThread().id)
 
         outputSurface = CodecOutputSurface(width, height)
 
@@ -48,12 +49,12 @@ class FrameExtractor(private val width: Int, private val height: Int, private va
         videoDecoder = ExtractFrameDecoder()
 
         videoDecoder.onSampleFormatConfirmed = {
-            Log.d(TAG, "onSampleFormatConfirmed " + Thread.currentThread().id)
+            AppLogger.d(TAG, "onSampleFormatConfirmed " + Thread.currentThread().id)
             onCatcherInit?.invoke()
         }
 
         videoDecoder.onOutputBufferGenerate = { outputBuffer, bufferInfo ->
-            Log.d(TAG, "onOutputBufferGenerate " + Thread.currentThread().id)
+            AppLogger.d(TAG, "onOutputBufferGenerate " + Thread.currentThread().id)
             //must call on the same thread which CodecOutputSurface created
             outputSurface.awaitNewImage()
             if (isRotate) {
@@ -78,7 +79,7 @@ class FrameExtractor(private val width: Int, private val height: Int, private va
     }
 
     fun requestFrame(ms: Long) {
-        Log.d(TAG, "requestFrame")
+        AppLogger.d(TAG, "requestFrame")
         videoDecoder.seekTo(ms)
     }
 

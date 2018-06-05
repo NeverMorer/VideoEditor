@@ -7,6 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import android.support.annotation.RequiresApi
 import android.util.Log
+import com.religion76.library.AppLogger
 import java.io.File
 
 /**
@@ -41,7 +42,7 @@ class MediaCoder {
         filePath = path
 
         videoDecoder.onOutputBufferGenerate = { buffer, bufferInfo ->
-            Log.d(TAG, "videoDecoder onOutputBufferGenerate")
+            AppLogger.d(TAG, "videoDecoder onOutputBufferGenerate")
             videoEncoder.offerData(buffer, bufferInfo)
         }
 
@@ -55,12 +56,12 @@ class MediaCoder {
         }
 
         videoDecoder.onDecodeFinish = {
-            Log.d(TAG, "--------------------------- videoDecoder onDecoderCompleted ---------------------------")
+            AppLogger.d(TAG, "--------------------------- videoDecoder onDecoderCompleted ---------------------------")
             videoDecoder.release()
         }
 
         videoEncoder.onSampleEncode = { byteBuffer, bufferInfo ->
-            Log.d(TAG, "videoEncoder onSampleEncode  trackIndex$trackIndex")
+            AppLogger.d(TAG, "videoEncoder onSampleEncode  trackIndex$trackIndex")
             if (!isMuxerReady) {
                 trackIndex = muxer.addTrack(videoEncoder.getOutputFormat())
                 muxer.start()
@@ -68,7 +69,7 @@ class MediaCoder {
             }
 
             if (bufferInfo.presentationTimeUs > endMs * 1000) {
-                Log.d("MediaCoder", "----------------------------- mux finish -----------------------------")
+                AppLogger.d("MediaCoder", "----------------------------- mux finish -----------------------------")
                 videoDecoder.queueEOS()
                 videoEncoder.queueEOS()
             } else {
@@ -77,12 +78,12 @@ class MediaCoder {
         }
 
         videoEncoder.onEncoderCompleted = {
-            Log.d(TAG, "--------------------------- videoEncoder onEncoderCompleted ---------------------------")
+            AppLogger.d(TAG, "--------------------------- videoEncoder onEncoderCompleted ---------------------------")
             release()
         }
 
         videoEncoder.onOutputFormatChanged = {
-            Log.d(TAG, "encoder output format" + it)
+            AppLogger.d(TAG, "encoder output format" + it)
         }
 
         videoDecoder.decode(filePath, null, startMs, true)

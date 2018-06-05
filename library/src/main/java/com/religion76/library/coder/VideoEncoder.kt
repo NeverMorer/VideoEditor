@@ -3,7 +3,7 @@ package com.religion76.library.coder
 import android.media.MediaCodec
 import android.media.MediaFormat
 import android.os.Build
-import android.util.Log
+import com.religion76.library.AppLogger
 import io.reactivex.Observable
 import io.reactivex.schedulers.Schedulers
 import java.nio.ByteBuffer
@@ -24,7 +24,7 @@ class VideoEncoder {
     private var isEncodeFinish = false
 
     fun prepare(mediaConfig: MediaConfig) {
-        Log.d(TAG, "prepare")
+        AppLogger.d(TAG, "prepare")
 
         encoder = MediaCodec.createEncoderByType(mediaConfig.mineType)
 
@@ -33,7 +33,7 @@ class VideoEncoder {
         videoFormat.setInteger(MediaFormat.KEY_BIT_RATE, mediaConfig.getCompressBitrate().toInt())
         videoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, mediaConfig.frameRate)
         videoFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, mediaConfig.iFrameInterval)
-        Log.d(TAG, "on encoder configured $videoFormat")
+        AppLogger.d(TAG, "on encoder configured $videoFormat")
 
         encoder.configure(videoFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
         encoder.start()
@@ -94,19 +94,19 @@ class VideoEncoder {
             while (true) {
                 val outputBufferIndex = encoder.dequeueOutputBuffer(bufferInfo, 0)
                 if (outputBufferIndex > 0) {
-                    Log.d(TAG, "encoder output data index:$outputBufferIndex")
+                    AppLogger.d(TAG, "encoder output data index:$outputBufferIndex")
                     val outputBuffer = getOutputBuffer(outputBufferIndex)
                     if (outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
-                        Log.d(TAG, "encoder output try again later")
+                        AppLogger.d(TAG, "encoder output try again later")
                     } else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                        Log.d(TAG, "encoder output format changed")
+                        AppLogger.d(TAG, "encoder output format changed")
                         onOutputFormatChanged?.invoke(encoder.outputFormat)
                     } else if (bufferInfo.flags.and(MediaCodec.BUFFER_FLAG_END_OF_STREAM) == 0) {
-                        Log.d(TAG, "encoder buffer output ")
+                        AppLogger.d(TAG, "encoder buffer output ")
                         onSampleEncode?.invoke(outputBuffer, bufferInfo)
                         encoder.releaseOutputBuffer(outputBufferIndex, false)
                     } else {
-                        Log.d(TAG, "encoder buffer end of stream")
+                        AppLogger.d(TAG, "encoder buffer end of stream")
                         it.onNext(true)
                         it.onComplete()
                         break
@@ -121,7 +121,7 @@ class VideoEncoder {
     }
 
     fun queueEOS() {
-        Log.d(TAG, "------------- encoder queueEOS ------------")
+        AppLogger.d(TAG, "------------- encoder queueEOS ------------")
         val inputBufferIndex = encoder.dequeueInputBuffer(-1)
         encoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
     }

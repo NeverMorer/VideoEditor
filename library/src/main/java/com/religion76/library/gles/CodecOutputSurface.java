@@ -51,7 +51,7 @@ public class CodecOutputSurface
 
     private ByteBuffer mPixelBuf;                       // used by saveFrame()
 
-    static final boolean VERBOSE = true;
+    static final boolean VERBOSE = false;
 
     /**
      * Creates a CodecOutputSurface backed by a pbuffer with the specified dimensions.  The

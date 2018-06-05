@@ -6,6 +6,7 @@ import android.media.MediaFormat
 import android.os.Build
 import android.util.Log
 import android.view.Surface
+import com.religion76.library.AppLogger
 import io.reactivex.Observable
 import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
@@ -59,7 +60,7 @@ class VideoDecoder {
     var onDecodeFinish: (() -> Unit)? = null
 
     private fun configure(mediaFormat: MediaFormat) {
-        Log.d(TAG, "on decoder configured $mediaFormat")
+        AppLogger.d(TAG, "on decoder configured $mediaFormat")
         decoder = MediaCodec.createDecoderByType(mediaFormat.getString(MediaFormat.KEY_MIME))
         decoder.configure(mediaFormat, null, null, 0)
         decoder.start()
@@ -69,7 +70,7 @@ class VideoDecoder {
 
     fun queueEOS() {
         if (!isDecodeFinish) {
-            Log.d(TAG, "------------- decoder queueEOS ------------")
+            AppLogger.d(TAG, "------------- decoder queueEOS ------------")
             val inputBufferIndex = decoder.dequeueInputBuffer(DEFAULT_QUEUE_TIMEOUT)
             decoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
         }
@@ -86,13 +87,13 @@ class VideoDecoder {
                 .filter { extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME).startsWith("video") }
                 .flatMap {
                     val sampleMediaFormat = extractor.getTrackFormat(it)
-                    Log.d(TAG, "decode format:$sampleMediaFormat")
+                    AppLogger.d(TAG, "decode format:$sampleMediaFormat")
                     extractor.selectTrack(it)
 
                     startMs?.let {
-                        Log.d(TAG, "startS:${it * 1000}")
+                        AppLogger.d(TAG, "startS:${it * 1000}")
                         extractor.seekTo(it * 1000, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
-                        Log.d(TAG, "seekTo:${extractor.sampleTime}")
+                        AppLogger.d(TAG, "seekTo:${extractor.sampleTime}")
                     }
 
                     configure(sampleMediaFormat)
@@ -137,19 +138,19 @@ class VideoDecoder {
                         //double check isDecodeFinish because last code is block
                         when (outputBufferIndex) {
                             MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED -> {
-                                Log.d(TAG, "decoder output INFO_OUTPUT_BUFFERS_CHANGED")
+                                AppLogger.d(TAG, "decoder output INFO_OUTPUT_BUFFERS_CHANGED")
                                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
                                     outputBuffers = decoder.outputBuffers
                                 }
                             }
                             MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                                Log.d(TAG, "decoder output INFO_OUTPUT_FORMAT_CHANGED")
+                                AppLogger.d(TAG, "decoder output INFO_OUTPUT_FORMAT_CHANGED")
                             }
                             MediaCodec.INFO_TRY_AGAIN_LATER -> {
-                                Log.d(TAG, "decoder output INFO_TRY_AGAIN_LATER")
+                                AppLogger.d(TAG, "decoder output INFO_TRY_AGAIN_LATER")
                             }
                             else -> {
-                                Log.d(TAG, "decoder output generate sample data")
+                                AppLogger.d(TAG, "decoder output generate sample data")
                                 if (bufferInfo.flags.and(MediaCodec.BUFFER_FLAG_END_OF_STREAM) == 0) {
                                     val outBuffer = getOutBuffer(outputBufferIndex)
                                     onOutputBufferGenerate?.invoke(outBuffer, bufferInfo)
@@ -175,11 +176,11 @@ class VideoDecoder {
 
     fun seekTo(ms: Long) {
         if (isAuto) {
-            Log.e(TAG, "current state is AUTO ,can't preform seekTo")
+            AppLogger.e(TAG, "current state is AUTO ,can't preform seekTo")
         } else {
-            Log.d(TAG, "seeking: ${ms * 1000}")
+            AppLogger.d(TAG, "seeking: ${ms * 1000}")
             extractor.seekTo(ms * 1000, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
-            Log.d(TAG, "sampleTime: ${extractor.sampleTime}")
+            AppLogger.d(TAG, "sampleTime: ${extractor.sampleTime}")
             offerData()
         }
     }
@@ -191,12 +192,12 @@ class VideoDecoder {
             val inputBuffer = getInputBuffer(inputBufferIndex)
             val sampleSize = extractor.readSampleData(inputBuffer, 0)
             return if (sampleSize < 0) {
-                Log.d(TAG, "InputBuffer BUFFER_FLAG_END_OF_STREAM")
+                AppLogger.d(TAG, "InputBuffer BUFFER_FLAG_END_OF_STREAM")
                 decoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
                 true
             } else {
                 //here to filter sample data by limit duration
-                Log.d(TAG, "InputBuffer queueInputBuffer")
+                AppLogger.d(TAG, "InputBuffer queueInputBuffer")
                 decoder.queueInputBuffer(inputBufferIndex, 0, sampleSize, extractor.sampleTime, 0)
                 extractor.advance()
                 false

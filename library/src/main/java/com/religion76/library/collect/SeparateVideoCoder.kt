@@ -4,6 +4,7 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.util.Log
+import com.religion76.library.AppLogger
 import com.religion76.library.gles.*
 import com.religion76.library.sync.MediaInfo
 import com.religion76.library.sync.VideoDecoderSync2
@@ -47,18 +48,18 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
     fun withScale(width: Int? = null, height: Int? = null) {
         scaleWidth = width
         scaleHeight = height
-        Log.d(TAG, "setting scale width:$width  height:$height")
+        AppLogger.d(TAG, "setting scale width:$width  height:$height")
     }
 
     fun withTrim(startMs: Long? = null, endMs: Long? = null) {
         this.startMs = startMs
         this.endMs = endMs
-        Log.d(TAG, "setting trim start:$startMs  end:$endMs")
+        AppLogger.d(TAG, "setting trim start:$startMs  end:$endMs")
     }
 
     fun setBitrate(bitrate: Int) {
         this.bitrate = bitrate
-        Log.d(TAG, "setting bitrate:$bitrate")
+        AppLogger.d(TAG, "setting bitrate:$bitrate")
     }
 
     fun setRotate(rotate: Boolean) {
@@ -69,8 +70,8 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
 
         mediaInfo = MediaInfo.getMediaInfo(path)
 
-        Log.d(TAG, "original width:${mediaInfo.getWidth()}  height:${mediaInfo.getHeight()}")
-        Log.d(TAG, "original bitrate:${mediaInfo.getBitrate()}")
+        AppLogger.d(TAG, "original width:${mediaInfo.getWidth()}  height:${mediaInfo.getHeight()}")
+        AppLogger.d(TAG, "original bitrate:${mediaInfo.getBitrate()}")
 
         if (scaleWidth != null && scaleHeight != null) {
             mediaInfo.setScale(scaleWidth!!, scaleHeight!!)
@@ -97,7 +98,7 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
     private var bufferTimeQueue: Queue<Long> = ArrayDeque()
 
     private fun draw() {
-        Log.d(TAG, "draw")
+        AppLogger.d(TAG, "draw")
 
         outputSurface.awaitNewImage()
 
@@ -123,15 +124,15 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
         videoDecoder.prepare(mediaFormat, mediaExtractor, outputSurface.surface)
 
         videoDecoder.onOutputBufferGenerate = { bufferInfo ->
-            Log.d(TAG, "onOutputBufferGenerate")
-            Log.d(TAG, "decode_presentationTimeUs: ${bufferInfo.presentationTimeUs}")
+            AppLogger.d(TAG, "onOutputBufferGenerate")
+            AppLogger.d(TAG, "decode_presentationTimeUs: ${bufferInfo.presentationTimeUs}")
 
             bufferTimeQueue.offer(bufferInfo.presentationTimeUs)
             draw()
         }
 
         videoDecoder.onDecodeFinish = {
-            Log.d(TAG, "onDecodeFinish")
+            AppLogger.d(TAG, "onDecodeFinish")
             encodeSurface.release()
             videoEncoder.queueEOS()
         }
@@ -145,7 +146,7 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
         initTexture()
 
         videoEncoder.onSampleEncode = { dataBuffer, bufferInfo ->
-            Log.d(TAG, "onSampleEncode")
+            AppLogger.d(TAG, "onSampleEncode")
 
             //video encode need format include csd-0 & csd-1 data
             if (muxTrackIndex == -1) {
@@ -153,10 +154,10 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
                 mediaMuxer.start()
             }
 
-            Log.d(TAG, "encode_presentationTimeUs: ${bufferInfo.presentationTimeUs}")
+            AppLogger.d(TAG, "encode_presentationTimeUs: ${bufferInfo.presentationTimeUs}")
 
             if (endMs != null && bufferInfo.presentationTimeUs > endMs!! * 1000 && !videoDecoder.isDecodeFinish) {
-                Log.d(TAG, "------------- end trim ------------")
+                AppLogger.d(TAG, "------------- end trim ------------")
                 videoDecoder.queueEOS()
                 videoEncoder.queueEOS()
             } else {
@@ -173,7 +174,7 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
 
         if (!isCoderDone) {
             if (videoDecoder.isDecodeFinish && videoEncoder.isEncodeFinish) {
-                Log.d(TAG, "end")
+                AppLogger.d(TAG, "end")
                 isCoderDone = true
                 release()
             } else {
@@ -201,7 +202,7 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
     }
 
     fun release() {
-        Log.d(TAG, "release")
+        AppLogger.d(TAG, "release")
         eglCore.release()
         encodeSurface.release()
         outputSurface.release()
