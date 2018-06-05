@@ -185,7 +185,7 @@ class ExtractFrameDecoder {
         }
     }
 
-    @Transient
+    @Volatile
     private var seekTime: Long? = null
 
     fun seekTo(us: Long) {
@@ -259,6 +259,7 @@ class ExtractFrameDecoder {
             if (inputBufferIndex >= 0 && !isDecodeFinish) {
                 val inputBuffer = getInputBuffer(inputBufferIndex)
                 val sampleSize = extractor.readSampleData(inputBuffer, 0)
+
                 if (sampleSize < 0) {
                     AppLogger.d(TAG, "InputBuffer BUFFER_FLAG_END_OF_STREAM")
                     decoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)

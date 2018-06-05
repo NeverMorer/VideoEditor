@@ -110,7 +110,7 @@ class VideoCoderSync3(private val path: String, private val dest: String) : Runn
         outputSurface = CodecOutputSurface2()
     }
 
-    @Transient
+    @Volatile
     private var isNewFrameAvailable: Boolean = false
 
     private var bufferTimeQueue: Queue<Long> = ArrayDeque()

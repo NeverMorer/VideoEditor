@@ -3,7 +3,6 @@ package com.religion76.library.collect
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMuxer
-import android.util.Log
 import com.religion76.library.AppLogger
 import com.religion76.library.gles.*
 import com.religion76.library.sync.MediaInfo
@@ -92,7 +91,7 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
         outputSurface = CodecOutputSurface2()
     }
 
-    @Transient
+    @Volatile
     private var isNewFrameAvailable: Boolean = false
 
     private var bufferTimeQueue: Queue<Long> = ArrayDeque()
