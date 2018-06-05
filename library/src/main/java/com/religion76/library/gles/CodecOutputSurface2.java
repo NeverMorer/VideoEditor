@@ -129,9 +129,14 @@ public class CodecOutputSurface2
      *
      * @param invert if set, render the image with Y inverted (0,0 in top left)
      */
+    public void drawImage(boolean invert, int rotation) {
+        mTextureRender.drawFrame(mSurfaceTexture, invert, rotation);
+    }
+
     public void drawImage(boolean invert) {
         mTextureRender.drawFrame(mSurfaceTexture, invert);
     }
+
 
     // SurfaceTexture callback
     @Override

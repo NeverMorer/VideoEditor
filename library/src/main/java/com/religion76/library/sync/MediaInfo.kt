@@ -6,7 +6,8 @@ import android.media.MediaMetadataRetriever
  * Created by SunChao
  * on 2018/6/1.
  */
-class MediaInfo private constructor(private var width: Int = 0,
+class MediaInfo private constructor(private var path: String,
+                                    private var width: Int = 0,
                                     private var height: Int = 0,
                                     private var duration: Int = 0,
                                     private var bitrate: Int = 0,
@@ -27,7 +28,7 @@ class MediaInfo private constructor(private var width: Int = 0,
             val bitrate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)
             val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
 
-            return MediaInfo(extractInt(width), extractInt(height), extractInt(duration), extractInt(bitrate), extractInt(rotation))
+            return MediaInfo(videoPath, extractInt(width), extractInt(height), extractInt(duration), extractInt(bitrate), extractInt(rotation))
         }
 
         private fun extractInt(str: String? = null): Int {
@@ -37,6 +38,8 @@ class MediaInfo private constructor(private var width: Int = 0,
                 0
             }
         }
+
+
     }
 
     fun getWidth() = width
@@ -44,8 +47,9 @@ class MediaInfo private constructor(private var width: Int = 0,
     fun getDuration() = duration
     fun getBitrate() = bitrate
     fun getRotation() = rotation
+    fun getPath() = path
 
-    fun setScale(width: Int, height: Int){
+    fun setScale(width: Int, height: Int) {
         this.width = width
         this.height = height
     }
@@ -60,4 +64,6 @@ class MediaInfo private constructor(private var width: Int = 0,
 
 
     }
+
+    fun is3GP():Boolean = path.endsWith("3gp")
 }

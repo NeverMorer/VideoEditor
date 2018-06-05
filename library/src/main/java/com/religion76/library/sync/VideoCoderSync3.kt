@@ -136,7 +136,7 @@ class VideoCoderSync3(private val path: String, private val dest: String) : Runn
 
         videoDecoder.prepare(mediaFormat, mediaExtractor, outputSurface.surface)
 
-        videoDecoder.onOutputBufferGenerate = { dataBuffer, bufferInfo ->
+        videoDecoder.onOutputBufferGenerate = {  bufferInfo ->
             Log.d(TAG, "onOutputBufferGenerate")
             Log.d(TAG, "decode_presentationTimeUs: ${bufferInfo.presentationTimeUs}")
 

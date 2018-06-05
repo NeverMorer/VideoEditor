@@ -242,6 +242,10 @@ public class CodecOutputSurface
         mTextureRender.drawFrame(mSurfaceTexture, invert);
     }
 
+    public void drawImage(boolean invert, int rotation) {
+        mTextureRender.drawFrame(mSurfaceTexture, invert, rotation);
+    }
+
     // SurfaceTexture callback
     @Override
     public void onFrameAvailable(SurfaceTexture st) {

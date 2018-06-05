@@ -41,15 +41,15 @@ class VideoDecoderSync2 {
 
     private fun getOutBuffer(index: Int): ByteBuffer {
         return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            outputBuffers[index]
+            outputBuffers!![index]
         } else {
             decoder.getOutputBuffer(index)
         }
     }
 
-    private lateinit var outputBuffers: Array<ByteBuffer>
+    private var outputBuffers: Array<ByteBuffer>? = null
 
-    var onOutputBufferGenerate: ((outputBuffer: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) -> Unit)? = null
+    var onOutputBufferGenerate: ((bufferInfo: MediaCodec.BufferInfo) -> Unit)? = null
 
     private fun configure(mediaFormat: MediaFormat, surface: Surface) {
         Log.d(TAG, "on decoder configured $mediaFormat")
@@ -72,6 +72,11 @@ class VideoDecoderSync2 {
     }
 
     fun pull(): Boolean {
+
+        if (outputBuffers == null) {
+            outputBuffers = decoder.outputBuffers
+        }
+
         return if (isDecodeFinish) {
             false
         } else {
@@ -97,7 +102,7 @@ class VideoDecoderSync2 {
                         Log.d(TAG, "decoder output generate sample data")
                         val outBuffer = getOutBuffer(outputBufferIndex)
                         decoder.releaseOutputBuffer(outputBufferIndex, isRender)
-                        onOutputBufferGenerate?.invoke(outBuffer, bufferInfo)
+                        onOutputBufferGenerate?.invoke(bufferInfo)
                     } else {
                         Log.d(TAG, "=== decoder end of stream ===")
                         isDecodeFinish = true

@@ -75,10 +75,14 @@ public class STextureRender {
         return mTextureID;
     }
 
+    public void drawFrame(SurfaceTexture st, boolean invert) {
+        drawFrame(st, invert, -1);
+    }
+
     /**
      * Draws the external texture in SurfaceTexture onto the current EGL surface.
      */
-    public void drawFrame(SurfaceTexture st, boolean invert) {
+    public void drawFrame(SurfaceTexture st, boolean invert, int rotation) {
         checkGlError("onDrawFrame start");
         st.getTransformMatrix(mSTMatrix);
 //        if (invert) {
@@ -114,9 +118,12 @@ public class STextureRender {
 
         //If set invert true, many video dose not work properly, so find this way to rotate frames
         //It's need to be figured out
-        if (invert) {
+        if (rotation >= 0) {
+            Matrix.rotateM(mMVPMatrix, 0, rotation, 0.0f, 0.0f, 1.0f);
+        } else if (invert) {
             Matrix.rotateM(mMVPMatrix, 0, 180, 0.0f, 0.0f, 1.0f);
         }
+
 
         GLES20.glUniformMatrix4fv(muMVPMatrixHandle, 1, false, mMVPMatrix, 0);
         GLES20.glUniformMatrix4fv(muSTMatrixHandle, 1, false, mSTMatrix, 0);

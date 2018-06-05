@@ -1,12 +1,11 @@
 package com.religion76.library.extractor
 
 import android.graphics.Bitmap
-import android.media.MediaFormat
-import android.media.MediaMetadataRetriever
 import android.os.Build
 import android.support.annotation.RequiresApi
 import android.util.Log
 import com.religion76.library.gles.CodecOutputSurface
+import com.religion76.library.sync.MediaInfo
 
 /**
  * Created by SunChao
@@ -14,7 +13,7 @@ import com.religion76.library.gles.CodecOutputSurface
  */
 
 @RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
-class FrameExtractor(private val videoPath: String, private val width: Int, private val height: Int) : Runnable {
+class FrameExtractor(private val width: Int, private val height: Int, private val mediaInfo: MediaInfo) : Runnable {
 
     companion object {
         val TAG = "FrameExtractor"
@@ -30,6 +29,8 @@ class FrameExtractor(private val videoPath: String, private val width: Int, priv
 
     var onCatcherInit: (() -> Unit)? = null
 
+    var isRotate = false
+
     override fun run() {
         init()
     }
@@ -42,6 +43,8 @@ class FrameExtractor(private val videoPath: String, private val width: Int, priv
 
         outputSurface = CodecOutputSurface(width, height)
 
+        isRotate = mediaInfo.is3GP()
+
         videoDecoder = ExtractFrameDecoder()
 
         videoDecoder.onSampleFormatConfirmed = {
@@ -53,7 +56,12 @@ class FrameExtractor(private val videoPath: String, private val width: Int, priv
             Log.d(TAG, "onOutputBufferGenerate " + Thread.currentThread().id)
             //must call on the same thread which CodecOutputSurface created
             outputSurface.awaitNewImage()
-            outputSurface.drawImage(true)
+            if (isRotate) {
+                outputSurface.drawImage(true, if (isRotate) mediaInfo.getRotation() else 0)
+            } else {
+                outputSurface.drawImage(true)
+            }
+
             onExtractProgressChange?.invoke(outputSurface.frame, bufferInfo.presentationTimeUs)
         }
 
@@ -62,7 +70,7 @@ class FrameExtractor(private val videoPath: String, private val width: Int, priv
             onExtractFinished?.invoke()
         }
 
-        videoDecoder.decode(videoPath, outputSurface.surface, null, false)
+        videoDecoder.decode(mediaInfo.getPath(), outputSurface.surface, null, false)
     }
 
     fun start() {

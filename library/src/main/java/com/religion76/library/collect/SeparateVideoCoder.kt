@@ -41,6 +41,8 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
     private var scaleWidth: Int? = null
     private var scaleHeight: Int? = null
 
+    private var isRotate = false
+
     //it's should be support via use GLES on the way to encoder
     fun withScale(width: Int? = null, height: Int? = null) {
         scaleWidth = width
@@ -59,6 +61,10 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
         Log.d(TAG, "setting bitrate:$bitrate")
     }
 
+    fun setRotate(rotate: Boolean) {
+        this.isRotate = rotate
+    }
+
     fun prepare(trackFormat: MediaFormat) {
 
         mediaInfo = MediaInfo.getMediaInfo(path)
@@ -72,7 +78,6 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
 
         initEncoder(trackFormat.getString(MediaFormat.KEY_MIME))
         initDecoder(trackFormat)
-
     }
 
     private fun initTexture() {
@@ -98,7 +103,11 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
 
         encodeSurface.makeCurrent()
 
-        outputSurface.drawImage(false)
+        if (isRotate) {
+            outputSurface.drawImage(false)
+        } else {
+            outputSurface.drawImage(false, if (isRotate) mediaInfo.getRotation() else 0)
+        }
 
         if (bufferTimeQueue.isNotEmpty()) {
             encodeSurface.setPresentationTime(bufferTimeQueue.poll() * 1000)
@@ -113,7 +122,7 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
 
         videoDecoder.prepare(mediaFormat, mediaExtractor, outputSurface.surface)
 
-        videoDecoder.onOutputBufferGenerate = { dataBuffer, bufferInfo ->
+        videoDecoder.onOutputBufferGenerate = { bufferInfo ->
             Log.d(TAG, "onOutputBufferGenerate")
             Log.d(TAG, "decode_presentationTimeUs: ${bufferInfo.presentationTimeUs}")
 

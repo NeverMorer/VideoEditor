@@ -36,6 +36,8 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
     private var isVideoTrackSelect = false
     private var isAudioTrackSelect = false
 
+    private var isRotate = false
+
     override fun run() {
         if (prepare()) {
             loop()
@@ -57,7 +59,11 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
     fun withScale(width: Int, height: Int) {
         scaleWidth = width
         scaleHeight = height
-        Log.d(VideoCoderSync3.TAG, "setting scale width:$width  height:$height")
+        Log.d(TAG, "setting scale width:$width  height:$height")
+    }
+
+    fun setRotate(rotate: Boolean) {
+        this.isRotate = rotate
     }
 
     private fun prepare(): Boolean {
@@ -88,6 +94,7 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
         videoCoder = SeparateVideoCoder(path, mediaMuxer, mediaExtractor)
         videoCoder.withScale(scaleWidth, scaleHeight)
         videoCoder.withTrim(startMs, endMs)
+        videoCoder.setRotate(isRotate)
         bitrate?.let {
             videoCoder.setBitrate(it)
         }
