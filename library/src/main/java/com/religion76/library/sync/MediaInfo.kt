@@ -9,7 +9,7 @@ import android.media.MediaMetadataRetriever
 class MediaInfo private constructor(private var path: String,
                                     private var width: Int = 0,
                                     private var height: Int = 0,
-                                    private var duration: Int = 0,
+                                    private var duration: Long = 0,
                                     private var bitrate: Int = 0,
                                     private var rotation: Int = 0) {
 
@@ -28,7 +28,7 @@ class MediaInfo private constructor(private var path: String,
             val bitrate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)
             val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
 
-            return MediaInfo(videoPath, extractInt(width), extractInt(height), extractInt(duration), extractInt(bitrate), extractInt(rotation))
+            return MediaInfo(videoPath, extractInt(width), extractInt(height), extractLong(duration), extractInt(bitrate), extractInt(rotation))
         }
 
         private fun extractInt(str: String? = null): Int {
@@ -39,7 +39,13 @@ class MediaInfo private constructor(private var path: String,
             }
         }
 
-
+        private fun extractLong(str: String? = null): Long {
+            return if (!str.isNullOrEmpty()) {
+                str!!.toLong()
+            } else {
+                0
+            }
+        }
     }
 
     fun getWidth() = width
