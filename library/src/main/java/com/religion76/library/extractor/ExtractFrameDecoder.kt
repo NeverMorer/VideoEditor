@@ -10,15 +10,10 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.os.Build
 import android.support.annotation.RequiresApi
-import android.util.Log
 import android.view.Surface
 import com.religion76.library.AppLogger
 import java.nio.ByteBuffer
 
-/**
- * Created by SunChao
- * on 2018/3/3.
- */
 
 @RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
 class ExtractFrameDecoder {

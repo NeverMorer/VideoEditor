@@ -167,7 +167,6 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
         }
     }
 
-    private var isLooping = false
 
     var isCoderDone = false
 
@@ -179,21 +178,13 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
                 isCoderDone = true
                 release()
             } else {
-                if (!isLooping) {
-                    videoDecoder.enqueueData()
-                    videoDecoder.pull()
-                }
-
                 if (isNewFrameAvailable) {
-
-                    isLooping = true
                     isNewFrameAvailable = false
-
                     videoEncoder.drain()
-
-                    videoDecoder.enqueueData()
-                    videoDecoder.pull()
                 }
+
+                videoDecoder.enqueueData()
+                videoDecoder.pull()
 
                 if (videoEncoder.isEOSNeed) {
                     videoEncoder.signEOS()

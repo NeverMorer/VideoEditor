@@ -37,6 +37,11 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
 
     private var isRotate = false
 
+    var isSucceed = false
+    private set(value) {
+        field = value
+    }
+
     override fun run() {
         if (prepare()) {
             loop()
@@ -108,17 +113,6 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
 
     private fun loop() {
         while (true) {
-//            if (videoCoder.isCoderDone && audioCoder.isCoderDone) {
-//                release()
-//                return
-//            } else {
-//                if (!isMuxerStart) {
-//                    mediaMuxer.start()
-//                    isMuxerStart = true
-//                }
-//                videoCoder.drain()
-//                audioCoder.drain()
-//            }
             if (!videoCoder.isCoderDone) {
                 if (!isVideoTrackSelect) {
                     mediaExtractor.selectTrack(videoExtractTrackIndex)
@@ -144,6 +138,7 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
             } else {
                 AppLogger.d(TAG, "---------- ending ----------")
                 release()
+                isSucceed = true
                 break
             }
         }
