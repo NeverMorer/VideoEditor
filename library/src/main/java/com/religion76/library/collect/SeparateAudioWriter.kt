@@ -38,8 +38,6 @@ class SeparateAudioWriter(private val mediaMuxer: MediaMuxer, private val mediaE
         //audio add muxer track here because this mediaFormat form MediaExtractor include csd-0
         muxTrackIndex = mediaMuxer.addTrack(trackFormat)
 
-        AppLogger.d(TAG, "audio muxer track index:$muxTrackIndex")
-
         dataBuffer = ByteBuffer.allocate(MAX_SAMPLE_SIZE)
     }
 
@@ -49,8 +47,6 @@ class SeparateAudioWriter(private val mediaMuxer: MediaMuxer, private val mediaE
 
     fun drain() {
         if (!isCoderDone) {
-
-            AppLogger.d(TAG, "read audio data")
 
             bufferInfo.size = mediaExtractor.readSampleData(dataBuffer, 0)
 
@@ -63,14 +59,11 @@ class SeparateAudioWriter(private val mediaMuxer: MediaMuxer, private val mediaE
                 mediaMuxer.writeSampleData(muxTrackIndex, dataBuffer, bufferInfo)
 
                 if (mediaExtractor.advance()) {
-                    AppLogger.d(TAG, "sampleTime:${mediaExtractor.sampleTime}   endMs:$endMs")
-                    if (endMs != null && mediaExtractor.sampleTime > endMs!! * 1000000) {
+                    if (endMs != null && mediaExtractor.sampleTime > endMs!! * 1000) {
                         isCoderDone = true
-                        AppLogger.d(TAG, "done from 1")
                     }
                 } else {
                     isCoderDone = true
-                    AppLogger.d(TAG, "done from 2")
                 }
             } else {
                 isCoderDone = true

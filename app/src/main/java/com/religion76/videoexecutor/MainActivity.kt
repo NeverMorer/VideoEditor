@@ -13,6 +13,7 @@ import android.util.Log
 import android.view.View
 import com.religion76.library.collect.SeparateAudioCoder
 import com.religion76.library.collect.VideoAudioCoder
+import com.religion76.library.sync.MediaInfo
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.item_video.view.*
 import java.io.File
@@ -66,8 +67,11 @@ class MainActivity : AppCompatActivity() {
                 Log.d(SeparateAudioCoder.TAG, " rotate degree:$d")
             }
 
+            val mediaInfo = MediaInfo.getMediaInfo(path)
+
             coder = VideoAudioCoder(path, FILE_PATH)
-            coder?.withTrim(1000, 5000)
+            coder?.withTrim(1000, 3000)
+            coder?.setVideoBitrate((mediaInfo.getBitrate() * 0.9).toInt())
 //            coder.withScale(480, 480)M
             Thread(coder).start()
         }
