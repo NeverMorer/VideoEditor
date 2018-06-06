@@ -149,7 +149,9 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
 
             //video encode need format include csd-0 & csd-1 data
             if (muxTrackIndex == -1) {
+                AppLogger.d(TAG, "video encode outputFormat:${videoEncoder.getOutputFormat()}")
                 muxTrackIndex = mediaMuxer.addTrack(videoEncoder.getOutputFormat())
+                AppLogger.d(TAG, "video encode muxer track index:$muxTrackIndex")
                 mediaMuxer.start()
             }
 

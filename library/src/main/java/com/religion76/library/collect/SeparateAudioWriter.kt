@@ -4,6 +4,7 @@ import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMuxer
+import com.religion76.library.AppLogger
 import java.nio.ByteBuffer
 
 /**
@@ -13,7 +14,7 @@ import java.nio.ByteBuffer
 class SeparateAudioWriter(private val mediaMuxer: MediaMuxer, private val mediaExtractor: MediaExtractor) {
 
     companion object {
-        const val TAG = "AudioCoderSync"
+        const val TAG = "SeparateAudioWriter"
         const val MAX_SAMPLE_SIZE = 1024 * 256
     }
 
@@ -37,6 +38,8 @@ class SeparateAudioWriter(private val mediaMuxer: MediaMuxer, private val mediaE
         //audio add muxer track here because this mediaFormat form MediaExtractor include csd-0
         muxTrackIndex = mediaMuxer.addTrack(trackFormat)
 
+        AppLogger.d(TAG, "audio muxer track index:$muxTrackIndex")
+
         dataBuffer = ByteBuffer.allocate(MAX_SAMPLE_SIZE)
     }
 
@@ -47,9 +50,12 @@ class SeparateAudioWriter(private val mediaMuxer: MediaMuxer, private val mediaE
     fun drain() {
         if (!isCoderDone) {
 
+            AppLogger.d(TAG, "read audio data")
+
             bufferInfo.size = mediaExtractor.readSampleData(dataBuffer, 0)
 
             if (bufferInfo.size > 0) {
+                AppLogger.d(TAG, "write audio data to file")
                 bufferInfo.offset = 0
                 bufferInfo.presentationTimeUs = mediaExtractor.sampleTime
                 bufferInfo.flags = mediaExtractor.sampleFlags
@@ -57,11 +63,14 @@ class SeparateAudioWriter(private val mediaMuxer: MediaMuxer, private val mediaE
                 mediaMuxer.writeSampleData(muxTrackIndex, dataBuffer, bufferInfo)
 
                 if (mediaExtractor.advance()) {
-                    if (endMs != null && mediaExtractor.sampleTime > endMs!! * 1000) {
+                    AppLogger.d(TAG, "sampleTime:${mediaExtractor.sampleTime}   endMs:$endMs")
+                    if (endMs != null && mediaExtractor.sampleTime > endMs!! * 1000000) {
                         isCoderDone = true
+                        AppLogger.d(TAG, "done from 1")
                     }
                 } else {
                     isCoderDone = true
+                    AppLogger.d(TAG, "done from 2")
                 }
             } else {
                 isCoderDone = true
