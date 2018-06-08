@@ -20,7 +20,7 @@ class ExtractFrameDecoder {
 
     companion object {
         const val TAG = "MediaCoder_Decoder"
-        const val DEFAULT_QUEUE_TIMEOUT = 100000L
+        const val DEFAULT_QUEUE_TIMEOUT = 10000L
         const val FAKE_SAMPLE_TIME = 999999999999L
         const val FAKE_SAMPLE_NUM_PER = 4
     }
@@ -29,13 +29,14 @@ class ExtractFrameDecoder {
 
     private lateinit var decoder: MediaCodec
 
-    private var isDecodeFinish = false
-
     private var isAuto = true
 
     private var isRender = false
 
+    @Volatile
     private var needLoop = false
+
+    private var isDecodeFinish = false
 
     private fun getInputBuffer(index: Int): ByteBuffer {
         return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
@@ -70,10 +71,14 @@ class ExtractFrameDecoder {
 
     fun queueEOS() {
         if (!isDecodeFinish) {
-            AppLogger.d(TAG, "------------- decoder queueEOS ------------")
-            val inputBufferIndex = decoder.dequeueInputBuffer(DEFAULT_QUEUE_TIMEOUT)
-            decoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-            isDecodeFinish = true
+            if (!needLoop) {
+                AppLogger.d(TAG, "------------- decoder queueEOS ------------")
+                val inputBufferIndex = decoder.dequeueInputBuffer(DEFAULT_QUEUE_TIMEOUT)
+                decoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+            } else {
+                isDecodeFinish = true
+            }
+            needLoop = true
         }
     }
 
@@ -124,14 +129,13 @@ class ExtractFrameDecoder {
             if (!isAuto && seekTime != null) {
                 extractor.seekTo(seekTime!!, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
                 AppLogger.d(TAG, "sampleTime: ${extractor.sampleTime}")
-                offerData(true)
-                seekTime = null
+                if (offerData(true)) {
+                    seekTime = null
+//                    offerFakeData2()
+                }
 //                extractor.advance()
             }
 
-            if (needQueueFakeSampleCount > 0) {
-                offerFakeData2()
-            }
 
             val bufferInfo = MediaCodec.BufferInfo()
 
@@ -149,6 +153,9 @@ class ExtractFrameDecoder {
                 }
                 MediaCodec.INFO_TRY_AGAIN_LATER -> {
                     AppLogger.d(TAG, "decoder output INFO_TRY_AGAIN_LATER")
+                    if (needLoop) {
+                        offerFakeData2()
+                    }
                 }
                 else -> {
                     AppLogger.d(TAG, "decoder output generate sample data")
@@ -159,11 +166,9 @@ class ExtractFrameDecoder {
                             AppLogger.d(TAG, "decode buffer size:${bufferInfo.size}")
                             AppLogger.d(TAG, "decode buffer index:$outputBufferIndex")
                             AppLogger.d(TAG, "decode buffer flag:${bufferInfo.flags}")
-                            needLoop = false
-
-//                            val outBuffer = getOutBuffer(outputBufferIndex)
-                            decoder.releaseOutputBuffer(outputBufferIndex, isRender)
                             AppLogger.d(TAG, "------------------ real frame generate ------------------")
+                            decoder.releaseOutputBuffer(outputBufferIndex, isRender)
+                            needLoop = false
                             onOutputBufferGenerate?.invoke(null, bufferInfo)
                         } else {
                             decoder.releaseOutputBuffer(outputBufferIndex, false)
@@ -178,6 +183,8 @@ class ExtractFrameDecoder {
                 break
             }
         }
+
+        release()
     }
 
     @Volatile
@@ -203,10 +210,9 @@ class ExtractFrameDecoder {
             AppLogger.d(TAG, "inputBuffer before read data: $inputBuffer")
             val sampleSize = extractor.readSampleData(inputBuffer, 0)
             AppLogger.d(TAG, "inputBuffer after read data: $inputBuffer")
-            return if (sampleSize < 0) {
+            if (sampleSize < 0) {
                 AppLogger.d(TAG, "InputBuffer BUFFER_FLAG_END_OF_STREAM")
                 decoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                true
             } else {
                 //here to filter sample data by limit duration
                 AppLogger.d(TAG, "queueInputBuffer")
@@ -224,11 +230,12 @@ class ExtractFrameDecoder {
                     extractor.advance()
                 }
 
-                false
+                return true
+
             }
-        } else {
-            return false
         }
+
+        return false
     }
 
     //fill the input buffers, ensure single frame decode can be work
@@ -248,30 +255,25 @@ class ExtractFrameDecoder {
 
     //todo optimize
     private fun offerFakeData2() {
-        for (i in 0..FAKE_SAMPLE_NUM_PER) {
-            val inputBufferIndex = decoder.dequeueInputBuffer(DEFAULT_QUEUE_TIMEOUT)
-            //double check isDecodeFinish because last code is block
-            if (inputBufferIndex >= 0 && !isDecodeFinish) {
-                val inputBuffer = getInputBuffer(inputBufferIndex)
-                val sampleSize = extractor.readSampleData(inputBuffer, 0)
+        val inputBufferIndex = decoder.dequeueInputBuffer(DEFAULT_QUEUE_TIMEOUT)
+        //double check isDecodeFinish because last code is block
+        if (inputBufferIndex >= 0 && !isDecodeFinish) {
+            val inputBuffer = getInputBuffer(inputBufferIndex)
+            val sampleSize = extractor.readSampleData(inputBuffer, 0)
 
-                if (sampleSize < 0) {
-                    AppLogger.d(TAG, "InputBuffer BUFFER_FLAG_END_OF_STREAM")
-                    decoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                } else {
-                    //here to filter sample data by limit duration
-                    AppLogger.d(TAG, "bufferIndex: $inputBufferIndex")
-                    AppLogger.d(TAG, "sampleSize: $sampleSize")
-                    AppLogger.d(TAG, "sampleTime: ${extractor.sampleTime}")
-                    AppLogger.d(TAG, "sampleFlags: ${extractor.sampleFlags}")
-                    decoder.queueInputBuffer(inputBufferIndex, 0, sampleSize, FAKE_SAMPLE_TIME, 0)
-                    needQueueFakeSampleCount--
-                }
+            if (sampleSize < 0) {
+                AppLogger.d(TAG, "InputBuffer BUFFER_FLAG_END_OF_STREAM")
+                decoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+            } else {
+                AppLogger.d(TAG, "-------queue fake data-------")
+                decoder.queueInputBuffer(inputBufferIndex, 0, sampleSize, FAKE_SAMPLE_TIME, 0)
+                needQueueFakeSampleCount--
             }
         }
     }
 
     fun release() {
+        AppLogger.d(TAG, "---- release ----")
         extractor.release()
         decoder.release()
     }

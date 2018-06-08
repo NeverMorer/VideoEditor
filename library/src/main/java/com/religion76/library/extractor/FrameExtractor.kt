@@ -50,25 +50,31 @@ class FrameExtractor(private val width: Int, private val height: Int, private va
 
         videoDecoder.onSampleFormatConfirmed = {
             AppLogger.d(TAG, "onSampleFormatConfirmed " + Thread.currentThread().id)
-            onCatcherInit?.invoke()
+            if (!isReleased){
+                onCatcherInit?.invoke()
+            }
         }
 
         videoDecoder.onOutputBufferGenerate = { outputBuffer, bufferInfo ->
             AppLogger.d(TAG, "onOutputBufferGenerate " + Thread.currentThread().id)
             //must call on the same thread which CodecOutputSurface created
-            outputSurface.awaitNewImage()
-            if (isRotate) {
-                outputSurface.drawImage(true, if (isRotate) mediaInfo.getRotation() else 0)
-            } else {
-                outputSurface.drawImage(true)
-            }
+            if (!isReleased){
+                outputSurface.awaitNewImage()
+                if (isRotate) {
+                    outputSurface.drawImage(true, if (isRotate) mediaInfo.getRotation() else 0)
+                } else {
+                    outputSurface.drawImage(true)
+                }
 
-            onExtractProgressChange?.invoke(outputSurface.frame, bufferInfo.presentationTimeUs)
+                onExtractProgressChange?.invoke(outputSurface.frame, bufferInfo.presentationTimeUs)
+            }
         }
 
         videoDecoder.onDecodeFinish = {
-            release()
-            onExtractFinished?.invoke()
+            if (!isReleased){
+                release()
+                onExtractFinished?.invoke()
+            }
         }
 
         videoDecoder.decode(mediaInfo.getPath(), outputSurface.surface, null, false)
@@ -86,7 +92,6 @@ class FrameExtractor(private val width: Int, private val height: Int, private va
     fun release() {
         if (!isReleased) {
             videoDecoder.queueEOS()
-            videoDecoder.release()
             outputSurface.release()
             isReleased = true
         }
