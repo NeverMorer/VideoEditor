@@ -38,9 +38,9 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
     private var isRotate = false
 
     var isSucceed = false
-    private set(value) {
-        field = value
-    }
+        private set(value) {
+            field = value
+        }
 
     override fun run() {
         if (prepare()) {
@@ -76,12 +76,17 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
         mediaExtractor = MediaExtractor()
         mediaExtractor.setDataSource(path)
 
+        var isPrepareSucceed = true
+
         for (i in 0..mediaExtractor.trackCount) {
             val trackFormat = mediaExtractor.getTrackFormat(i)
             val mimeType = trackFormat.getString(MediaFormat.KEY_MIME)
             if (mimeType.startsWith("video")) {
                 videoExtractTrackIndex = i
-                initVideoCoder(trackFormat)
+
+                if (videoExtractTrackIndex < 0 || !initVideoCoder(trackFormat)) {
+                    isPrepareSucceed = false
+                }
             } else if (mimeType.startsWith("audio")) {
                 audioExtractTrackIndex = i
                 initAudioCoder(trackFormat)
@@ -91,10 +96,10 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
             }
         }
 
-        return videoExtractTrackIndex != -1
+        return isPrepareSucceed
     }
 
-    private fun initVideoCoder(trackFormat: MediaFormat) {
+    private fun initVideoCoder(trackFormat: MediaFormat): Boolean {
         videoCoder = SeparateVideoCoder(path, mediaMuxer, mediaExtractor)
         videoCoder.withScale(scaleWidth, scaleHeight)
         videoCoder.withTrim(startMs, endMs)
@@ -102,7 +107,7 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
         bitrate?.let {
             videoCoder.setBitrate(it)
         }
-        videoCoder.prepare(trackFormat)
+        return videoCoder.prepare(trackFormat)
     }
 
     private fun initAudioCoder(trackFormat: MediaFormat) {

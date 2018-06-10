@@ -52,13 +52,6 @@ class VideoDecoderSync2 {
 
     var onOutputBufferGenerate: ((bufferInfo: MediaCodec.BufferInfo) -> Unit)? = null
 
-    private fun configure(mediaFormat: MediaFormat, surface: Surface) {
-        AppLogger.d(TAG, "on decoder configured $mediaFormat")
-        decoder = MediaCodec.createDecoderByType(mediaFormat.getString(MediaFormat.KEY_MIME))
-        decoder.configure(mediaFormat, surface, null, 0)
-        decoder.start()
-        isRender = true
-    }
 
     fun queueEOS() {
         if (!isDecodeFinish) {
@@ -67,9 +60,21 @@ class VideoDecoderSync2 {
         }
     }
 
-    fun prepare(mediaFormat: MediaFormat, mediaExtractor: MediaExtractor, surface: Surface) {
-        configure(mediaFormat, surface)
+    fun prepare(mediaFormat: MediaFormat, mediaExtractor: MediaExtractor, surface: Surface): Boolean {
+        AppLogger.d(TAG, "on decoder configured $mediaFormat")
+        try {
+            decoder = MediaCodec.createDecoderByType(mediaFormat.getString(MediaFormat.KEY_MIME))
+            decoder.configure(mediaFormat, surface, null, 0)
+            decoder.start()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return false
+        }
+
+        isRender = true
         extractor = mediaExtractor
+
+        return true
     }
 
     fun pull(): Boolean {

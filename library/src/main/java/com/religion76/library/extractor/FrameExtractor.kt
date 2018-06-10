@@ -30,6 +30,8 @@ class FrameExtractor(private val width: Int, private val height: Int, private va
 
     var onCatcherInit: (() -> Unit)? = null
 
+    var isPrepared = false
+
     var isRotate = false
 
     override fun run() {
@@ -50,7 +52,7 @@ class FrameExtractor(private val width: Int, private val height: Int, private va
 
         videoDecoder.onSampleFormatConfirmed = {
             AppLogger.d(TAG, "onSampleFormatConfirmed " + Thread.currentThread().id)
-            if (!isReleased){
+            if (!isReleased) {
                 onCatcherInit?.invoke()
             }
         }
@@ -58,7 +60,7 @@ class FrameExtractor(private val width: Int, private val height: Int, private va
         videoDecoder.onOutputBufferGenerate = { outputBuffer, bufferInfo ->
             AppLogger.d(TAG, "onOutputBufferGenerate " + Thread.currentThread().id)
             //must call on the same thread which CodecOutputSurface created
-            if (!isReleased){
+            if (!isReleased) {
                 outputSurface.awaitNewImage()
                 if (isRotate) {
                     outputSurface.drawImage(true, if (isRotate) mediaInfo.getRotation() else 0)
@@ -71,13 +73,16 @@ class FrameExtractor(private val width: Int, private val height: Int, private va
         }
 
         videoDecoder.onDecodeFinish = {
-            if (!isReleased){
+            if (!isReleased) {
                 release()
                 onExtractFinished?.invoke()
             }
         }
 
-        videoDecoder.decode(mediaInfo.getPath(), outputSurface.surface, null, false)
+        if (videoDecoder.prepare(mediaInfo.getPath(), outputSurface.surface, null, false)) {
+            videoDecoder.startDecode()
+            isPrepared = true
+        }
     }
 
     fun start() {
@@ -86,7 +91,9 @@ class FrameExtractor(private val width: Int, private val height: Int, private va
 
     fun requestFrame(ms: Long) {
         AppLogger.d(TAG, "requestFrame")
-        videoDecoder.seekTo(ms)
+        if (isPrepared){
+            videoDecoder.seekTo(ms)
+        }
     }
 
     fun release() {

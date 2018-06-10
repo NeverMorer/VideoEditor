@@ -82,6 +82,40 @@ class ExtractFrameDecoder {
         }
     }
 
+    fun prepare(path: String, surface: Surface? = null, startMs: Long? = null, auto: Boolean = true): Boolean {
+        extractor = MediaExtractor()
+        extractor.setDataSource(path)
+
+        isAuto = auto
+        isRender = surface != null
+
+        for (i in 0 until extractor.trackCount) {
+            val sampleMediaFormat = extractor.getTrackFormat(i)
+            if (sampleMediaFormat.getString(MediaFormat.KEY_MIME).startsWith("video")) {
+                AppLogger.d(TAG, "decode format:$sampleMediaFormat")
+                extractor.selectTrack(i)
+
+                startMs?.let {
+                    AppLogger.d(TAG, "startS:${it * 1000}")
+                    extractor.seekTo(it * 1000, MediaExtractor.SEEK_TO_NEXT_SYNC)
+                    AppLogger.d(TAG, "seekTo:${extractor.sampleTime}")
+                }
+
+                try {
+                    configure(sampleMediaFormat, surface)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    return false
+                }
+
+                onSampleFormatConfirmed?.invoke(sampleMediaFormat)
+                return true
+            }
+        }
+
+        return false
+    }
+
     fun decode(path: String, surface: Surface? = null, startMs: Long? = null, auto: Boolean = true) {
 
         extractor = MediaExtractor()
@@ -114,7 +148,7 @@ class ExtractFrameDecoder {
     }
 
 
-    private fun startDecode() {
+    fun startDecode() {
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
             outputBuffers = decoder.outputBuffers

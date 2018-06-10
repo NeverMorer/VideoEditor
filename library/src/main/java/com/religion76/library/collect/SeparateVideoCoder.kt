@@ -65,7 +65,7 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
         this.isRotate = rotate
     }
 
-    fun prepare(trackFormat: MediaFormat) {
+    fun prepare(trackFormat: MediaFormat): Boolean {
 
         mediaInfo = MediaInfo.getMediaInfo(path)
 
@@ -76,8 +76,7 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
             mediaInfo.setScale(scaleWidth!!, scaleHeight!!)
         }
 
-        initEncoder(trackFormat.getString(MediaFormat.KEY_MIME))
-        initDecoder(trackFormat)
+        return initEncoder(trackFormat.getString(MediaFormat.KEY_MIME)) && initDecoder(trackFormat)
     }
 
     private fun initTexture() {
@@ -117,10 +116,12 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
         isNewFrameAvailable = true
     }
 
-    private fun initDecoder(mediaFormat: MediaFormat) {
+    private fun initDecoder(mediaFormat: MediaFormat): Boolean {
         videoDecoder = VideoDecoderSync2()
 
-        videoDecoder.prepare(mediaFormat, mediaExtractor, outputSurface.surface)
+        if (!videoDecoder.prepare(mediaFormat, mediaExtractor, outputSurface.surface)) {
+            return false
+        }
 
         videoDecoder.onOutputBufferGenerate = { bufferInfo ->
             AppLogger.d(TAG, "onOutputBufferGenerate")
@@ -135,13 +136,18 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
             encodeSurface.release()
             videoEncoder.queueEOS()
         }
+
+        return true
     }
 
-    private fun initEncoder(mimeType: String) {
+    private fun initEncoder(mimeType: String): Boolean {
         videoEncoder = VideoEncoderSync()
 
-        videoEncoder.prepare(mimeType, mediaInfo, bitrate)
+        if (!videoEncoder.prepare(mimeType, mediaInfo, bitrate)) {
+            return false
+        }
 
+        //todo try catch error when device not support egl
         initTexture()
 
         videoEncoder.onSampleEncode = { dataBuffer, bufferInfo ->
@@ -165,6 +171,8 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
                 mediaMuxer.writeSampleData(muxTrackIndex, dataBuffer, bufferInfo)
             }
         }
+
+        return true
     }
 
 

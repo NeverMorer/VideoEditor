@@ -30,7 +30,7 @@ class VideoEncoderSync {
 
     var isEOSNeed = false
 
-    fun prepare(mimeType: String, mediaInfo: MediaInfo, bitrate: Int? = null) {
+    fun prepare(mimeType: String, mediaInfo: MediaInfo, bitrate: Int? = null): Boolean {
         AppLogger.d(TAG, "prepare")
 
         encoder = MediaCodec.createEncoderByType(mimeType)
@@ -49,16 +49,21 @@ class VideoEncoderSync {
 
         AppLogger.d(TAG, "on encoder configured $videoFormat")
 
-        encoder.configure(videoFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-
-        surface = encoder.createInputSurface()
-
-        encoder.start()
+        try {
+            encoder.configure(videoFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+            surface = encoder.createInputSurface()
+            encoder.start()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return false
+        }
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
             inputBuffers = encoder.inputBuffers
             outputBuffers = encoder.outputBuffers
         }
+
+        return true
     }
 
     fun getSurface() = surface
