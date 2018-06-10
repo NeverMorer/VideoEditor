@@ -104,7 +104,7 @@ class ExtractFrameDecoder {
                 try {
                     configure(sampleMediaFormat, surface)
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    AppLogger.d(TAG, "decoder configure failed")
                     return false
                 }
 

@@ -67,7 +67,7 @@ class VideoDecoderSync2 {
             decoder.configure(mediaFormat, surface, null, 0)
             decoder.start()
         } catch (e: Exception) {
-            e.printStackTrace()
+            AppLogger.d(TAG, "decoder configure failed")
             return false
         }
 

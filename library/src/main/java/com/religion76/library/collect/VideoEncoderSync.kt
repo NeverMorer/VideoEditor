@@ -54,7 +54,7 @@ class VideoEncoderSync {
             surface = encoder.createInputSurface()
             encoder.start()
         } catch (e: Exception) {
-            e.printStackTrace()
+            AppLogger.d(TAG, "encoder configure failed")
             return false
         }
 
