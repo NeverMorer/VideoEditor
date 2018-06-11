@@ -126,6 +126,10 @@ class VideoDecoderSync2 {
             return
         }
 
+        if (inputBuffers == null){
+            inputBuffers = decoder.inputBuffers
+        }
+
         val inputBufferIndex = decoder.dequeueInputBuffer(DEFAULT_QUEUE_TIMEOUT)
         //double check isDecodeFinish because last code is block
         if (inputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
