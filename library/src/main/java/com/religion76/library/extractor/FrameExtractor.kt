@@ -80,8 +80,8 @@ class FrameExtractor(private val width: Int, private val height: Int, private va
         }
 
         if (videoDecoder.prepare(mediaInfo.getPath(), outputSurface.surface, null, false)) {
-            videoDecoder.startDecode()
             isPrepared = true
+            videoDecoder.startDecode()
         }
     }
 
