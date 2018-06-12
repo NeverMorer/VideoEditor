@@ -30,6 +30,8 @@ class VideoEncoderSync {
 
     var isEOSNeed = false
 
+    var isEOSQueue = false
+
     fun prepare(mimeType: String, mediaInfo: MediaInfo, bitrate: Int? = null): Boolean {
         AppLogger.d(TAG, "prepare")
 
@@ -175,18 +177,12 @@ class VideoEncoderSync {
     }
 
     fun signEOS() {
-//        val inputBufferIndex = encoder.dequeueInputBuffer(DEFAULT_QUEUE_TIMEOUT)
-//        if (inputBufferIndex > 0) {
-//            encoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-//            isEOSNeed = false
-//        }
-//        if (isEOSNeed) {
-//            encoder.signalEndOfInputStream()
-//            isEOSNeed = false
-//        }
-
-        if (isEOSNeed) {
-            isEncodeFinish = true
+        if (isEOSNeed && !isEOSQueue) {
+            AppLogger.d(TAG, "=========sign EOS=========")
+            surface.release()
+            encoder.signalEndOfInputStream()
+            isEOSQueue = true
+            isEOSNeed = false
         }
     }
 
