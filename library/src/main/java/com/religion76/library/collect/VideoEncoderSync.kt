@@ -186,7 +186,10 @@ class VideoEncoderSync {
 //        }
 
         if (isEOSNeed) {
-            isEncodeFinish = true
+            surface.release()
+            encoder.signalEndOfInputStream()
+            isEOSNeed = false
+//            isEncodeFinish = true
         }
     }
 

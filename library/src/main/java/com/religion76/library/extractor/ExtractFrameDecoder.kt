@@ -105,6 +105,7 @@ class ExtractFrameDecoder {
                     configure(sampleMediaFormat, surface)
                 } catch (e: Exception) {
                     e.printStackTrace()
+                    isDecodeFinish = true
                     return false
                 }
 
