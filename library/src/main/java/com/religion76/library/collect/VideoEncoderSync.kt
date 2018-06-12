@@ -31,6 +31,9 @@ class VideoEncoderSync {
     var isEOSNeed = false
 
     var isEOSQueue = false
+    private set(value) {
+        field = value
+    }
 
     fun prepare(mimeType: String, mediaInfo: MediaInfo, bitrate: Int? = null): Boolean {
         AppLogger.d(TAG, "prepare")
@@ -181,8 +184,10 @@ class VideoEncoderSync {
             AppLogger.d(TAG, "=========sign EOS=========")
             surface.release()
             encoder.signalEndOfInputStream()
+//            encoder.flush()
             isEOSQueue = true
             isEOSNeed = false
+            AppLogger.d(TAG, "=========sign EOS succeed=========")
         }
     }
 

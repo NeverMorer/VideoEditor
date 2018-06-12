@@ -108,9 +108,10 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
             outputSurface.drawImage(false, if (isRotate) mediaInfo.getRotation() else 0)
         }
 
-        if (bufferTimeQueue.isNotEmpty()) {
-            encodeSurface.setPresentationTime(bufferTimeQueue.poll() * 1000)
-        }
+        val outputTime = bufferTimeQueue.poll() * 1000
+        encodeSurface.setPresentationTime(outputTime)
+        AppLogger.d("zzz", "outputTime:$outputTime")
+
         encodeSurface.swapBuffers()
 
         isNewFrameAvailable = true
@@ -128,6 +129,8 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
             AppLogger.d(TAG, "decode_presentationTimeUs: ${bufferInfo.presentationTimeUs}")
 
             bufferTimeQueue.offer(bufferInfo.presentationTimeUs)
+            AppLogger.d("zzz", "offerTime:${bufferInfo.presentationTimeUs}")
+
             draw()
         }
 
@@ -179,7 +182,6 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
     var isCoderDone = false
 
     fun drain() {
-
         if (!isCoderDone) {
             if (videoDecoder.isDecodeFinish && videoEncoder.isEncodeFinish) {
                 AppLogger.d(TAG, "end")
@@ -196,6 +198,11 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
 
                 if (videoEncoder.isEOSNeed) {
                     videoEncoder.signEOS()
+                }
+
+                if (videoEncoder.isEOSQueue){
+                    AppLogger.d(TAG, "drain from ")
+                    videoEncoder.drain()
                 }
             }
         }
