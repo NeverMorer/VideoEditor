@@ -97,7 +97,7 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
     private fun draw(presentTime:Long) {
         AppLogger.d(TAG, "draw")
 
-        AppLogger.d("zzz", "video out time:$presentTime")
+        AppLogger.d("zzz", "video decode out time:$presentTime")
 
         outputSurface.awaitNewImage()
 
@@ -128,6 +128,7 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
             AppLogger.d(TAG, "decode_presentationTimeUs: ${bufferInfo.presentationTimeUs}")
 
             draw(bufferInfo.presentationTimeUs - offset)
+
         }
 
         videoDecoder.onDecodeFinish = {
@@ -163,10 +164,12 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
             AppLogger.d(TAG, "encode_presentationTimeUs: ${bufferInfo.presentationTimeUs}")
 
             if (endMs != null && bufferInfo.presentationTimeUs + offset > endMs!! * 1000 && !videoDecoder.isDecodeFinish) {
+                AppLogger.d("zzz", "video over time:${bufferInfo.presentationTimeUs}")
                 AppLogger.d(TAG, "------------- end trim ------------")
                 videoDecoder.queueEOS()
                 videoEncoder.queueEOS()
             } else {
+                AppLogger.d("zzz", "video out time:${bufferInfo.presentationTimeUs}")
                 mediaMuxer.writeSampleData(muxTrackIndex, dataBuffer, bufferInfo)
             }
         }

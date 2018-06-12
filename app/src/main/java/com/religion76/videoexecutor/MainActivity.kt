@@ -70,7 +70,7 @@ class MainActivity : AppCompatActivity() {
             val mediaInfo = MediaInfo.getMediaInfo(path)
 
             coder = VideoAudioCoder(path, FILE_PATH)
-            coder?.withTrim(1000, 3000)
+            coder?.withTrim(1000, 2000)
             coder?.setVideoBitrate((mediaInfo.getBitrate() * 0.9).toInt())
 //            coder.withScale(480, 480)M
             Thread(coder).start()
