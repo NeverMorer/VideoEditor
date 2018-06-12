@@ -7,7 +7,6 @@ import com.religion76.library.AppLogger
 import com.religion76.library.gles.*
 import com.religion76.library.sync.MediaInfo
 import com.religion76.library.sync.VideoDecoderSync2
-import java.util.*
 
 /**
  * Created by SunChao
@@ -35,6 +34,8 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
 
     private var startMs: Long? = null
     private var endMs: Long? = null
+
+    var offset: Long = 0
 
     private var bitrate: Int? = null
 
@@ -93,10 +94,10 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
     @Volatile
     private var isNewFrameAvailable: Boolean = false
 
-    private var bufferTimeQueue: Queue<Long> = ArrayDeque()
-
-    private fun draw() {
+    private fun draw(presentTime:Long) {
         AppLogger.d(TAG, "draw")
+
+        AppLogger.d("zzz", "video out time:$presentTime")
 
         outputSurface.awaitNewImage()
 
@@ -108,9 +109,7 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
             outputSurface.drawImage(false, if (isRotate) mediaInfo.getRotation() else 0)
         }
 
-        val outputTime = bufferTimeQueue.poll() * 1000
-        encodeSurface.setPresentationTime(outputTime)
-        AppLogger.d("zzz", "outputTime:$outputTime")
+        encodeSurface.setPresentationTime(presentTime * 1000)
 
         encodeSurface.swapBuffers()
 
@@ -128,10 +127,7 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
             AppLogger.d(TAG, "onOutputBufferGenerate")
             AppLogger.d(TAG, "decode_presentationTimeUs: ${bufferInfo.presentationTimeUs}")
 
-            bufferTimeQueue.offer(bufferInfo.presentationTimeUs)
-            AppLogger.d("zzz", "offerTime:${bufferInfo.presentationTimeUs}")
-
-            draw()
+            draw(bufferInfo.presentationTimeUs - offset)
         }
 
         videoDecoder.onDecodeFinish = {
@@ -166,7 +162,7 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
 
             AppLogger.d(TAG, "encode_presentationTimeUs: ${bufferInfo.presentationTimeUs}")
 
-            if (endMs != null && bufferInfo.presentationTimeUs > endMs!! * 1000 && !videoDecoder.isDecodeFinish) {
+            if (endMs != null && bufferInfo.presentationTimeUs + offset > endMs!! * 1000 && !videoDecoder.isDecodeFinish) {
                 AppLogger.d(TAG, "------------- end trim ------------")
                 videoDecoder.queueEOS()
                 videoEncoder.queueEOS()
@@ -200,7 +196,7 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
                     videoEncoder.signEOS()
                 }
 
-                if (videoEncoder.isEOSQueue){
+                if (videoEncoder.isEOSQueue) {
                     AppLogger.d(TAG, "drain from ")
                     videoEncoder.drain()
                 }
