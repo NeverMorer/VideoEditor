@@ -25,8 +25,6 @@ class SeparateAudioWriter(private val mediaMuxer: MediaMuxer, private val mediaE
 
     private lateinit var dataBuffer: ByteBuffer
 
-    var offset: Long = 0
-
 
     fun withTrim(startMs: Long? = null, endMs: Long? = null) {
         this.startMs = startMs
@@ -55,10 +53,9 @@ class SeparateAudioWriter(private val mediaMuxer: MediaMuxer, private val mediaE
             if (bufferInfo.size > 0) {
                 AppLogger.d(TAG, "write audio data to file")
                 bufferInfo.offset = 0
-                bufferInfo.presentationTimeUs = mediaExtractor.sampleTime - offset
+                bufferInfo.presentationTimeUs = mediaExtractor.sampleTime
                 bufferInfo.flags = mediaExtractor.sampleFlags
 
-                AppLogger.d("zzz", "audio outputTime:${bufferInfo.presentationTimeUs}")
 
                 mediaMuxer.writeSampleData(muxTrackIndex, dataBuffer, bufferInfo)
 

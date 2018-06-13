@@ -123,8 +123,7 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
                     mediaExtractor.selectTrack(videoExtractTrackIndex)
                     startMs?.let {
                         mediaExtractor.seekTo(it * 1000, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
-                        videoCoder.offset = mediaExtractor.sampleTime
-                        AppLogger.d("zzz", "video offset:${videoCoder.offset}")
+//                        videoCoder.offset = mediaExtractor.sampleTime
                     } ?: mediaExtractor.seekTo(0, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
 
                     isVideoTrackSelect = true
@@ -137,8 +136,7 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
                     mediaExtractor.selectTrack(audioExtractTrackIndex)
                     startMs?.let {
                         mediaExtractor.seekTo(it * 1000, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
-                        audioCoder.offset = mediaExtractor.sampleTime
-                        AppLogger.d("zzz", "audio offset:${videoCoder.offset}")
+//                        audioCoder.offset = mediaExtractor.sampleTime
                     } ?: mediaExtractor.seekTo(0, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
 
                     isAudioTrackSelect = true
