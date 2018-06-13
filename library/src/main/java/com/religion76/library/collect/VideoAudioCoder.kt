@@ -76,14 +76,14 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
         mediaExtractor = MediaExtractor()
         mediaExtractor.setDataSource(path)
 
-        var isPrepareSucceed = true
+        var isPrepareSucceed = false
 
         for (i in 0 until mediaExtractor.trackCount) {
             val trackFormat = mediaExtractor.getTrackFormat(i)
             val mimeType = trackFormat.getString(MediaFormat.KEY_MIME)
             if (mimeType.startsWith("video")) {
+                isPrepareSucceed  = true
                 videoExtractTrackIndex = i
-
                 if (videoExtractTrackIndex < 0 || !initVideoCoder(trackFormat)) {
                     isPrepareSucceed = false
                 }
