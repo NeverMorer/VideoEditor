@@ -3,7 +3,10 @@ package com.religion76.library.collect
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMuxer
+import android.os.Handler
+import android.os.Looper
 import com.religion76.library.AppLogger
+import kotlin.Exception
 
 /**
  * Created by SunChao
@@ -37,6 +40,11 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
 
     private var isRotate = false
 
+    private var callback: ResultCallback? = null
+    private var callbackHandler: Handler? = null
+
+    private var isReleased = false
+
     var isSucceed = false
         private set(value) {
             field = value
@@ -45,7 +53,32 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
     override fun run() {
         if (prepare()) {
             loop()
+            callback?.let {
+                val handler = callbackHandler ?: Handler(Looper.getMainLooper())
+                handler.post {
+                    if (isSucceed) {
+                        it.onSucceed()
+                    } else {
+                        it.onFailed("execute error...")
+                        release()
+                    }
+                }
+            }
+        } else {
+            callback?.let {
+                val handler = callbackHandler ?: Handler(Looper.getMainLooper())
+                handler.post {
+                    it.onFailed("codec prepare error...")
+                    release()
+                }
+            }
         }
+    }
+
+    //if handler not set, will post callback to UiThread
+    fun setCallback(callback: ResultCallback, callbackHandler: Handler? = null) {
+        this.callback = callback
+        this.callbackHandler = callbackHandler
     }
 
     fun withTrim(startMs: Long? = null, endMs: Long? = null) {
@@ -76,27 +109,34 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
         mediaExtractor = MediaExtractor()
         mediaExtractor.setDataSource(path)
 
-        var isPrepareSucceed = false
 
         for (i in 0 until mediaExtractor.trackCount) {
             val trackFormat = mediaExtractor.getTrackFormat(i)
             val mimeType = trackFormat.getString(MediaFormat.KEY_MIME)
-            if (mimeType.startsWith("video")) {
-                isPrepareSucceed  = true
+            if (mimeType.startsWith("video") && videoExtractTrackIndex < 0) {
                 videoExtractTrackIndex = i
-                if (videoExtractTrackIndex < 0 || !initVideoCoder(trackFormat)) {
-                    isPrepareSucceed = false
-                }
-            } else if (mimeType.startsWith("audio")) {
+            } else if (mimeType.startsWith("audio") && audioExtractTrackIndex < 0) {
                 audioExtractTrackIndex = i
-                initAudioCoder(trackFormat)
             }
-            if (videoExtractTrackIndex != -1 && audioExtractTrackIndex != -1) {
-                break
-            }
+
+            AppLogger.d("ddd", "mediaFormat: $trackFormat")
         }
 
-        return isPrepareSucceed
+        if (videoExtractTrackIndex < 0) {
+            return false
+        }
+
+        if (audioExtractTrackIndex >= 0) {
+            val audioTrackFormat = mediaExtractor.getTrackFormat(audioExtractTrackIndex)
+            initAudioCoder(audioTrackFormat)
+        }
+
+        val videoTrackFormat = mediaExtractor.getTrackFormat(videoExtractTrackIndex)
+        if (!initVideoCoder(videoTrackFormat)) {
+            return false
+        }
+
+        return true
     }
 
     private fun initVideoCoder(trackFormat: MediaFormat): Boolean {
@@ -152,9 +192,24 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
     }
 
     fun release() {
-        AppLogger.d(TAG, "release")
-        mediaExtractor.release()
-        mediaMuxer.stop()
-        mediaMuxer.release()
+        if (!isReleased) {
+            try {
+                AppLogger.d(TAG, "release")
+                mediaExtractor.release()
+                mediaMuxer.stop()
+                mediaMuxer.release()
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                isReleased = true
+            }
+        }
+    }
+
+    interface ResultCallback {
+        fun onSucceed()
+
+        fun onFailed(errorMessage: String)
     }
 }

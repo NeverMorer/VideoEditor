@@ -1,4 +1,4 @@
-package com.religion76.library.sync
+package com.religion76.library
 
 import android.media.MediaMetadataRetriever
 

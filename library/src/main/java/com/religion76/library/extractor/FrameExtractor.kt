@@ -3,10 +3,9 @@ package com.religion76.library.extractor
 import android.graphics.Bitmap
 import android.os.Build
 import android.support.annotation.RequiresApi
-import android.util.Log
 import com.religion76.library.AppLogger
 import com.religion76.library.gles.CodecOutputSurface
-import com.religion76.library.sync.MediaInfo
+import com.religion76.library.MediaInfo
 
 /**
  * Created by SunChao

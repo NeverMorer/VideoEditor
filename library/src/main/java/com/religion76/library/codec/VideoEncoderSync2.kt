@@ -1,13 +1,12 @@
-package com.religion76.library.sync
+package com.religion76.library.codec
 
 import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.os.Build
-import android.util.Log
 import android.view.Surface
 import com.religion76.library.AppLogger
-import com.religion76.library.coder.MediaConfig
+import com.religion76.library.MediaInfo
 import java.nio.ByteBuffer
 
 /**
@@ -62,7 +61,7 @@ class VideoEncoderSync2 {
 
     fun prepare(mediaFormat: MediaFormat) {
 
-        encoder = MediaCodec.createEncoderByType(MediaConfig().mineType)
+        encoder = MediaCodec.createEncoderByType("video/avc")
         encoder.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
         encoder.start()
 

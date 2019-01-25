@@ -5,8 +5,8 @@ import android.media.MediaFormat
 import android.media.MediaMuxer
 import com.religion76.library.AppLogger
 import com.religion76.library.gles.*
-import com.religion76.library.sync.MediaInfo
-import com.religion76.library.sync.VideoDecoderSync2
+import com.religion76.library.MediaInfo
+import com.religion76.library.codec.VideoDecoderSync2
 
 /**
  * Created by SunChao
@@ -22,13 +22,9 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
 
     private lateinit var videoDecoder: VideoDecoderSync2
 
-    private lateinit var encodeSurface: WindowSurface
-
-    private lateinit var outputSurface: CodecOutputSurface2
-
     private lateinit var mediaInfo: MediaInfo
 
-    private lateinit var eglCore: EglCore
+    private val frameRender = FrameRender()
 
     private var muxTrackIndex: Int = -1
 
@@ -78,44 +74,14 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
         return initEncoder(trackFormat.getString(MediaFormat.KEY_MIME)) && initDecoder(trackFormat)
     }
 
-    private fun initTexture() {
-
-        eglCore = EglCore(null, EglCore.FLAG_RECORDABLE)
-
-        encodeSurface = WindowSurface(eglCore, videoEncoder.getSurface(), true)
-
-        encodeSurface.makeCurrent()
-
-        outputSurface = CodecOutputSurface2()
-    }
 
     @Volatile
     private var isNewFrameAvailable: Boolean = false
 
-    private fun draw(presentTime:Long) {
-        AppLogger.d(TAG, "draw")
-
-        outputSurface.awaitNewImage()
-
-        encodeSurface.makeCurrent()
-
-        if (isRotate) {
-            outputSurface.drawImage(false)
-        } else {
-            outputSurface.drawImage(false, if (isRotate) mediaInfo.getRotation() else 0)
-        }
-
-        encodeSurface.setPresentationTime(presentTime * 1000)
-
-        encodeSurface.swapBuffers()
-
-        isNewFrameAvailable = true
-    }
-
     private fun initDecoder(mediaFormat: MediaFormat): Boolean {
         videoDecoder = VideoDecoderSync2()
 
-        if (!videoDecoder.prepare(mediaFormat, mediaExtractor, outputSurface.surface)) {
+        if (!videoDecoder.prepare(mediaFormat, mediaExtractor, frameRender.getDecodeOutputSurface())) {
             return false
         }
 
@@ -123,13 +89,12 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
             AppLogger.d(TAG, "onOutputBufferGenerate")
             AppLogger.d(TAG, "decode_presentationTimeUs: ${bufferInfo.presentationTimeUs}")
 
-            draw(bufferInfo.presentationTimeUs)
-
+            frameRender.draw(bufferInfo.presentationTimeUs)
+            isNewFrameAvailable = true
         }
 
         videoDecoder.onDecodeFinish = {
             AppLogger.d(TAG, "onDecodeFinish")
-            encodeSurface.release()
             videoEncoder.queueEOS()
         }
 
@@ -144,7 +109,7 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
         }
 
         //todo try catch error when device not support egl
-        initTexture()
+        frameRender.init(videoEncoder.getSurface())
 
         videoEncoder.onSampleEncode = { dataBuffer, bufferInfo ->
             AppLogger.d(TAG, "onSampleEncode")
@@ -203,10 +168,7 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
 
     fun release() {
         AppLogger.d(TAG, "release")
-        eglCore.release()
-        encodeSurface.release()
-        outputSurface.release()
-
+        frameRender.release()
         videoDecoder.release()
         videoEncoder.release()
     }

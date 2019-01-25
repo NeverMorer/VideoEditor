@@ -3,9 +3,8 @@ package com.religion76.library.collect
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMuxer
-import android.util.Log
 import com.religion76.library.AppLogger
-import com.religion76.library.sync.VideoDecoderSync
+import com.religion76.library.codec.VideoDecoderSync
 
 /**
  * Created by SunChao

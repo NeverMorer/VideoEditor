@@ -1,22 +1,69 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="com.religion76.videoexecutor.MainActivity">
+    tools:context=".MainActivity">
 
-    <ListView
-        android:id="@+id/lvVideos"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
+    <VideoView
+        android:id="@+id/videoView"
+        android:layout_width="0dp"
+        android:layout_height="200dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"/>
 
-    <ImageView
-        android:id="@+id/image"
+
+    <Button
+        android:id="@+id/btnSelectVideo"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
-        android:scaleType="fitCenter"
-        android:visibility="gone"/>
+        android:layout_marginTop="20dp"
+        android:layout_marginLeft="20dp"
+        android:text="select video"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvVideoPath" />
 
-</RelativeLayout>
+    <Button
+        android:id="@+id/btnPlay"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:layout_marginLeft="20dp"
+        android:text="Play"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/btnSelectVideo" />
+
+
+    <Button
+        android:id="@+id/btnCompress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:layout_marginLeft="20dp"
+        android:text="Compress"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/btnPlay" />
+
+    <ProgressBar
+        android:id="@+id/pbExecute"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:layout_marginLeft="10dp"
+        android:visibility="gone"
+        app:layout_constraintStart_toEndOf="@id/btnCompress"
+        app:layout_constraintBottom_toBottomOf="@id/btnCompress"
+        app:layout_constraintTop_toTopOf="@id/btnCompress"/>
+
+    <TextView
+        android:id="@+id/tvVideoPath"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:layout_marginLeft="20dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/videoView"/>
+
+
+</android.support.constraint.ConstraintLayout>

@@ -1,6 +1,7 @@
-package com.religion76.library.sync
+package com.religion76.library.codec
 
 import android.media.MediaCodec
+import android.media.MediaCodecList
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.os.Build
@@ -63,11 +64,25 @@ class VideoDecoderSync2 {
     fun prepare(mediaFormat: MediaFormat, mediaExtractor: MediaExtractor, surface: Surface): Boolean {
         AppLogger.d(TAG, "on decoder configured $mediaFormat")
         try {
-            decoder = MediaCodec.createDecoderByType(mediaFormat.getString(MediaFormat.KEY_MIME))
+
+            var isDecodeInit = false
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val codecName = MediaCodecList(0).findDecoderForFormat(mediaFormat)
+                if (!codecName.isNullOrEmpty()) {
+                    decoder = MediaCodec.createByCodecName(codecName)
+                    isDecodeInit = true
+                }
+            }
+
+            if (!isDecodeInit){
+                decoder = MediaCodec.createDecoderByType(mediaFormat.getString(MediaFormat.KEY_MIME))
+            }
+
             decoder.configure(mediaFormat, surface, null, 0)
             decoder.start()
         } catch (e: Exception) {
-            AppLogger.d(TAG, "decoder configure failed")
+            AppLogger.d(TAG, "decoder configure failed: $e")
             return false
         }
 
@@ -106,8 +121,10 @@ class VideoDecoderSync2 {
                 else -> {
                     if (bufferInfo.flags.and(MediaCodec.BUFFER_FLAG_END_OF_STREAM) == 0) {
                         AppLogger.d(TAG, "decoder output generate sample data")
-                        decoder.releaseOutputBuffer(outputBufferIndex, isRender)
-                        onOutputBufferGenerate?.invoke(bufferInfo)
+                        if (bufferInfo.size > 0) {
+                            decoder.releaseOutputBuffer(outputBufferIndex, isRender)
+                            onOutputBufferGenerate?.invoke(bufferInfo)
+                        }
                     } else {
                         AppLogger.d(TAG, "=== decoder end of stream ===")
                         isDecodeFinish = true
@@ -126,7 +143,7 @@ class VideoDecoderSync2 {
             return
         }
 
-        if (inputBuffers == null){
+        if (inputBuffers == null) {
             inputBuffers = decoder.inputBuffers
         }
 

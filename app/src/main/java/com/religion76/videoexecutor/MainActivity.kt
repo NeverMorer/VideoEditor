@@ -1,90 +1,132 @@
 package com.religion76.videoexecutor
 
 import android.Manifest
-import android.media.MediaMetadataRetriever
+import android.app.Activity
+import android.content.Intent
 import android.os.Build
-import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Environment
-import android.os.Handler
-import android.provider.MediaStore
-import android.support.v4.widget.SimpleCursorAdapter
-import android.util.Log
+
 import android.view.View
-import com.religion76.library.collect.SeparateAudioCoder
+import android.widget.Toast
+import com.religion76.library.AppLogger
 import com.religion76.library.collect.VideoAudioCoder
-import com.religion76.library.sync.MediaInfo
+import com.sw926.imagefileselector.PermissionsHelper
 import kotlinx.android.synthetic.main.activity_main.*
-import kotlinx.android.synthetic.main.item_video.view.*
 import java.io.File
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : Activity() {
 
-    val FILE_PATH = Environment.getExternalStorageDirectory().absolutePath.plus(File.separator).plus(System.currentTimeMillis().toString() + "hhhh.mp4")
+    companion object {
+        const val REQUEST_VIDEO = 0x11
+        const val REQUEST_PERMISSION_RW = 0x12
+    }
 
-    private lateinit var localVideos: MutableList<String>
+    private var videoPath: String? = null
+
+    private var coder: VideoAudioCoder? = null
+
+    private val ENCODE_DEST_PATH = "${Environment.getExternalStorageDirectory().absolutePath}/compressed_video/"
+
+    private val permissionHelper: PermissionsHelper by lazy {
+        PermissionsHelper()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        btnSelectVideo.setOnClickListener {
+            permissionHelper.checkAndRequestPermission(this, REQUEST_PERMISSION_RW, {
+                selectVideo()
+            }, Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            requestPermissions(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), 101)
-        } else {
-            loadLocalVideos()
+        btnCompress.setOnClickListener {
+            if (videoPath.isNullOrEmpty()) {
+                return@setOnClickListener
+            }
+
+            coder = VideoAudioCoder(videoPath!!, ENCODE_DEST_PATH + "aaa.mp4")
+
+            coder!!.setCallback(object : VideoAudioCoder.ResultCallback {
+                override fun onSucceed() {
+                    Toast.makeText(this@MainActivity, "compress succeed QvQ", Toast.LENGTH_SHORT).show()
+                    pbExecute.visibility = View.GONE
+                }
+
+                override fun onFailed(errorMessage: String) {
+                    Toast.makeText(this@MainActivity, "compress filed - -||", Toast.LENGTH_SHORT).show()
+                    pbExecute.visibility = View.GONE
+                    AppLogger.d("ddd", "video exc onFailed:$errorMessage")
+                }
+
+            })
+
+            Thread(coder!!).start()
+            pbExecute.visibility = View.VISIBLE
+        }
+
+        btnPlay.setOnClickListener {
+            if (videoPath.isNullOrEmpty()) {
+                return@setOnClickListener
+            }
+
+            if (videoView.isPlaying) {
+                videoView.suspend()
+            }
+
+            videoView.setVideoPath(videoPath)
+            videoView.start()
+        }
+
+        videoView.setOnCompletionListener {
+            videoView.suspend()
+        }
+
+        videoPath = ""
+
+        val destFile = File(ENCODE_DEST_PATH)
+        if (!destFile.exists()) {
+            destFile.mkdir()
         }
     }
 
-    var coder: VideoAudioCoder? = null
+    private fun selectVideo() {
+        val intent = Intent()
 
-    val handler = Handler()
-
-    private fun loadLocalVideos() {
-        localVideos = emptyList<String>().toMutableList()
-
-        val cursor = contentResolver.query(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, null, null, null, null)
-
-        val adapter = SimpleCursorAdapter(this, R.layout.item_video, cursor, arrayOf(MediaStore.Video.Media.DATA), intArrayOf(R.id.tvPath))
-
-        image.setOnClickListener {
-            it.visibility = View.GONE
+        if (Build.VERSION.SDK_INT < 19) {
+            intent.action = Intent.ACTION_GET_CONTENT
+            intent.type = "video/*"
+        } else {
+            intent.action = Intent.ACTION_OPEN_DOCUMENT
+            intent.addCategory(Intent.CATEGORY_OPENABLE)
+            intent.type = "video/*"
         }
 
-        lvVideos.adapter = adapter
-        lvVideos.setOnItemClickListener { parent, view, position, id ->
-            //            val mediaCoder = MediaCoder()
-//            mediaCoder.start(view.tvPath.text.toString(),2000, 6000)
+        startActivityForResult(Intent.createChooser(intent, "选择要导入的视频"), REQUEST_VIDEO)
+    }
 
-            val path = view.tvPath.text.toString()
+    override fun onDestroy() {
+        super.onDestroy()
+        if (coder != null) {
+            coder!!.release()
+        }
+    }
 
-            val retrieverSrc = MediaMetadataRetriever()
-            retrieverSrc.setDataSource(path)
-
-            val degreesString = retrieverSrc.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
-            if (degreesString != null) {
-                val d = Integer.parseInt(degreesString)
-                Log.d(SeparateAudioCoder.TAG, " rotate degree:$d")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_VIDEO && resultCode == Activity.RESULT_OK) {
+            data?.data?.let {
+                val path = MediaPathUtil.getPath(this, it)
+                videoPath = path
+                tvVideoPath.text = path
             }
-
-            val mediaInfo = MediaInfo.getMediaInfo(path)
-
-            coder = VideoAudioCoder(path, FILE_PATH)
-            coder?.withTrim(1000, 2000)
-            coder?.setVideoBitrate((mediaInfo.getBitrate() * 0.9).toInt())
-//            coder.withScale(480, 480)M
-            Thread(coder).start()
         }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        loadLocalVideos()
-
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        coder?.release()
+        permissionHelper.onRequestPermissionsResult(REQUEST_PERMISSION_RW, permissions, grantResults)
     }
 }

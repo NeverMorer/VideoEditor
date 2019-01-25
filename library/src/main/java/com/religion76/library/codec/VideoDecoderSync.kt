@@ -1,10 +1,9 @@
-package com.religion76.library.sync
+package com.religion76.library.codec
 
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.os.Build
-import android.util.Log
 import com.religion76.library.AppLogger
 import java.nio.ByteBuffer
 
