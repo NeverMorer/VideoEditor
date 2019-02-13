@@ -7,6 +7,7 @@ import android.os.Build
 import android.view.Surface
 import com.religion76.library.AppLogger
 import com.religion76.library.MediaInfo
+import java.nio.Buffer
 import java.nio.ByteBuffer
 
 /**
@@ -29,9 +30,9 @@ class VideoEncoderSync {
     var isEOSNeed = false
 
     var isEOSQueue = false
-    private set(value) {
-        field = value
-    }
+        private set(value) {
+            field = value
+        }
 
     fun prepare(mimeType: String, mediaInfo: MediaInfo, bitrate: Int? = null): Boolean {
         AppLogger.d(TAG, "prepare")
@@ -90,6 +91,8 @@ class VideoEncoderSync {
 
     var onSampleEncode: ((ByteBuffer, MediaCodec.BufferInfo) -> Unit)? = null
 
+    var onSampleEncoded: ((Int, MediaCodec.BufferInfo) -> Unit)? = null
+
     var onEncoderCompleted: (() -> Unit)? = null
 
     var onOutputFormatChanged: ((MediaFormat) -> Unit)? = null
@@ -110,11 +113,12 @@ class VideoEncoderSync {
         }
     }
 
-    private val bufferInfo by lazy {
-        MediaCodec.BufferInfo()
-    }
+//    private val bufferInfo by lazy {
+//        MediaCodec.BufferInfo()
+//    }
 
     fun pull(): Boolean {
+        val bufferInfo = MediaCodec.BufferInfo()
         val outputBufferIndex = encoder.dequeueOutputBuffer(bufferInfo, 0)
         if (outputBufferIndex > 0) {
             AppLogger.d(TAG, "encoder output data index:$outputBufferIndex")
@@ -143,33 +147,34 @@ class VideoEncoderSync {
 
 
     fun drain() {
-        while (true) {
-            val outputBufferIndex = encoder.dequeueOutputBuffer(bufferInfo, 0)
-            if (outputBufferIndex > 0) {
-                AppLogger.d(TAG, "encoder output data index:$outputBufferIndex")
-                val outputBuffer = getOutputBuffer(outputBufferIndex)
-                when {
-                    outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER -> {
-                        AppLogger.d(TAG, "encoder output try again later")
-                        return
-                    }
-                    outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                        AppLogger.d(TAG, "encoder output format changed")
-                        onOutputFormatChanged?.invoke(encoder.outputFormat)
-                    }
-                    bufferInfo.flags.and(MediaCodec.BUFFER_FLAG_END_OF_STREAM) == 0 -> {
-                        AppLogger.d(TAG, "encoder buffer output ")
-                        onSampleEncode?.invoke(outputBuffer, bufferInfo)
-                        encoder.releaseOutputBuffer(outputBufferIndex, false)
-                        return
-                    }
-                    else -> {
-                        AppLogger.d(TAG, "=== encoder buffer end of stream ===")
-                        isEncodeFinish = true
-                    }
+
+        AppLogger.d(TAG, "drain")
+
+        val bufferInfo = MediaCodec.BufferInfo()
+        val outputBufferIndex = encoder.dequeueOutputBuffer(bufferInfo, 1000)
+        if (outputBufferIndex > 0) {
+            AppLogger.d(TAG, "encoder output data index:$outputBufferIndex")
+            when {
+                outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER -> {
+                    AppLogger.d(TAG, "encoder output try again later")
+                    return
+                }
+                outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
+                    AppLogger.d(TAG, "encoder output format changed")
+                    onOutputFormatChanged?.invoke(encoder.outputFormat)
+                }
+                bufferInfo.flags.and(MediaCodec.BUFFER_FLAG_END_OF_STREAM) == 0 -> {
+                    AppLogger.d(TAG, "encoder buffer output ")
+//                        onSampleEncode?.invoke(outputBuffer, bufferInfo)
+//                        encoder.releaseOutputBuffer(outputBufferIndex, false)
+                    onSampleEncoded?.invoke(outputBufferIndex, bufferInfo)
+                    return
+                }
+                else -> {
+                    AppLogger.d(TAG, "=== encoder buffer end of stream ===")
+                    isEncodeFinish = true
                 }
             }
-            break
         }
     }
 

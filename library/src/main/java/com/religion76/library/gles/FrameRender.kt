@@ -37,15 +37,23 @@ class FrameRender {
     fun draw(presentTime: Long) {
         Log.d(TAG, "draw")
 
+        Log.d("bbb1", "b4_1")
+
         decodeOutputSurface.awaitNewImage()
 
+        Log.d("bbb1", "b4_2")
+
         encodeInputSurface.makeCurrent()
+
+        Log.d("bbb1", "b4_3")
 
         if (rotateDegree > 0) {
             decodeOutputSurface.drawImage(false, rotateDegree)
         } else {
             decodeOutputSurface.drawImage(false)
         }
+
+        Log.d("bbb1", "b4_4")
 
         encodeInputSurface.setPresentationTime(presentTime * 1000)
 

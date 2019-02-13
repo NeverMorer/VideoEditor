@@ -124,7 +124,6 @@ public class STextureRender {
             Matrix.rotateM(mMVPMatrix, 0, 180, 0.0f, 0.0f, 1.0f);
         }
 
-
         GLES20.glUniformMatrix4fv(muMVPMatrixHandle, 1, false, mMVPMatrix, 0);
         GLES20.glUniformMatrix4fv(muSTMatrixHandle, 1, false, mSTMatrix, 0);
 
