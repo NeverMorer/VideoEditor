@@ -49,6 +49,8 @@ class MainActivity : Activity() {
 
             coder = VideoAudioCoder2(videoPath!!, ENCODE_DEST_PATH + "aaad.mp4")
 
+//            coder!!.setWithAudio(false)
+
             coder!!.setCallback(object : VideoAudioCoder2.ResultCallback {
                 override fun onSucceed() {
                     Toast.makeText(this@MainActivity, "compress succeed QvQ", Toast.LENGTH_SHORT).show()

@@ -46,6 +46,7 @@ class VideoAudioCoder2(private val path: String, private val dest: String) : Run
 
     private var isReleased = false
 
+    private var withAudio = true
 
     override fun run() {
         if (prepare()) {
@@ -61,6 +62,13 @@ class VideoAudioCoder2(private val path: String, private val dest: String) : Run
                     videoCoder.release()
                     if (audioFormat != null && audioCoder != null) {
                         executeAudio()
+                    }
+
+                    callback?.let {
+                        val handler = callbackHandler ?: Handler(Looper.getMainLooper())
+                        handler.post {
+                            it.onSucceed()
+                        }
                     }
                     release()
                 }
@@ -106,15 +114,12 @@ class VideoAudioCoder2(private val path: String, private val dest: String) : Run
         } ?: mediaExtractor.seekTo(0, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
 
         audioCoder?.copyAudio()
-
-        callback?.let {
-            val handler = callbackHandler ?: Handler(Looper.getMainLooper())
-            handler.post {
-                it.onSucceed()
-            }
-        }
     }
 
+
+    fun setWithAudio(audioEnable: Boolean) {
+        withAudio = audioEnable
+    }
 
     //if handler not set, will post callback to UiThread
     fun setCallback(callback: ResultCallback, callbackHandler: Handler? = null) {
@@ -172,7 +177,7 @@ class VideoAudioCoder2(private val path: String, private val dest: String) : Run
             return false
         }
 
-        if (audioExtractTrackIndex >= 0) {
+        if (withAudio && audioExtractTrackIndex >= 0) {
             audioFormat = mediaExtractor.getTrackFormat(audioExtractTrackIndex)
             initAudioCoder()
         }

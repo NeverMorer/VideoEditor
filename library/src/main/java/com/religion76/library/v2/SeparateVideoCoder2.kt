@@ -49,7 +49,9 @@ class SeparateVideoCoder2(private val path: String, private val mediaMuxer: Medi
 
     private var callback: MediaExecuteCallback? = null
     private var callbackHandler: Handler? = null
+
     private var lastFrameTime: Long = -1
+    private var lastFrameTimeTemp: Long = -1
 
     //it's should be support via use GLES on the way to encoder
     fun withScale(width: Int? = null, height: Int? = null) {
@@ -106,8 +108,12 @@ class SeparateVideoCoder2(private val path: String, private val mediaMuxer: Medi
             AppLogger.d(TAG, "decode_buffer_size: ${bufferInfo.size}")
             AppLogger.d(TAG, "decode_buffer_offset: ${bufferInfo.offset}")
             AppLogger.d(TAG, "decode_buffer_flag: ${bufferInfo.flags}")
-            lastFrameTime = bufferInfo.presentationTimeUs
+            lastFrameTimeTemp = bufferInfo.presentationTimeUs
             frameRender?.draw(bufferInfo.presentationTimeUs)
+        }
+
+        videoDecoder!!.onDecodeFinish = {
+            lastFrameTime = lastFrameTimeTemp
         }
 
         return true
