@@ -56,7 +56,15 @@ class AudioDuplicator(private val mediaMuxer: MediaMuxer, private val mediaExtra
                 bufferInfo.presentationTimeUs = mediaExtractor.sampleTime
                 bufferInfo.flags = mediaExtractor.sampleFlags
 
-                mediaMuxer.writeSampleData(muxTrackIndex, dataBuffer, bufferInfo)
+                if (startMs != null) {
+                    val startTimeUs = startMs!! * 1000
+                    if (bufferInfo.presentationTimeUs >= startTimeUs) {
+                        bufferInfo.presentationTimeUs = bufferInfo.presentationTimeUs - startTimeUs
+                        mediaMuxer.writeSampleData(muxTrackIndex, dataBuffer, bufferInfo)
+                    }
+                } else {
+                    mediaMuxer.writeSampleData(muxTrackIndex, dataBuffer, bufferInfo)
+                }
 
                 if (mediaExtractor.advance()) {
                     if (endMs != null && mediaExtractor.sampleTime > endMs!! * 1000) {

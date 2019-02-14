@@ -105,10 +105,6 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
         }
 
         videoDecoder!!.onOutputBufferGenerate = { bufferInfo ->
-            AppLogger.d(TAG, "decode_buffer_timeUs: ${bufferInfo.presentationTimeUs}")
-            AppLogger.d(TAG, "decode_buffer_size: ${bufferInfo.size}")
-            AppLogger.d(TAG, "decode_buffer_offset: ${bufferInfo.offset}")
-            AppLogger.d(TAG, "decode_buffer_flag: ${bufferInfo.flags}")
             lastFrameTimeTemp = bufferInfo.presentationTimeUs
 
             if (inputSurface != null && outputSurface != null) {
@@ -118,8 +114,6 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
                 inputSurface!!.setPresentationTime(bufferInfo.presentationTimeUs * 1000)
                 inputSurface!!.swapBuffers()
             }
-
-//            frameRender?.draw(bufferInfo.presentationTimeUs)
         }
 
         videoDecoder!!.onDecodeFinish = {
@@ -138,8 +132,6 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
 
             override fun onOutputBufferAvailable(codec: MediaCodec, index: Int, info: MediaCodec.BufferInfo, outputBuffer: ByteBuffer?) {
                 Log.d(TAG, "encoder_onOutputBufferAvailable")
-                Log.d(TAG, "encoder_lastFrameTime: $lastFrameTime")
-                Log.d(TAG, "encoder_bufferTime: ${info.presentationTimeUs}")
                 if (info.flags == MediaCodec.BUFFER_FLAG_END_OF_STREAM || (lastFrameTime > 0 && info.presentationTimeUs >= lastFrameTime)) {
 
                     Log.d(TAG, "encoder_receive end")
@@ -156,14 +148,21 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
                         if (muxTrackIndex == -1) {
                             sampleIndexQueue.offer(index)
                             sampleInfoQueue.offer(info)
-                            AppLogger.d(TAG, "writeSample queue")
                         } else {
-                            AppLogger.d(TAG, "writeSample execute")
                             flushSampleQueue(codec)
 
                             videoEncoder?.getOutputBuffer(index)?.let { outputBuffer ->
                                 Log.d(TAG, "muxer_sample_bufferTime: ${info.presentationTimeUs}")
-                                mediaMuxer.writeSampleData(muxTrackIndex, outputBuffer, info)
+
+                                if (startMs != null) {
+                                    val startTimeUs = startMs!! * 1000
+                                    if (info.presentationTimeUs >= startTimeUs) {
+                                        info.presentationTimeUs = info.presentationTimeUs - startTimeUs
+                                        mediaMuxer.writeSampleData(muxTrackIndex, outputBuffer, info)
+                                    }
+                                } else {
+                                    mediaMuxer.writeSampleData(muxTrackIndex, outputBuffer, info)
+                                }
                             }
 
                             codec.releaseOutputBuffer(index, false)
@@ -205,7 +204,8 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
 
         })
 
-        val encoderSurface = videoEncoder!!.configure(mediaFormat, buildEncodeOutputMediaFormat(mediaFormat, mediaInfo, bitrate)) ?: return false
+        val encoderSurface = videoEncoder!!.configure(mediaFormat, buildEncodeOutputMediaFormat(mediaFormat, mediaInfo, bitrate))
+                ?: return false
 
         inputSurface = InputSurface(encoderSurface)
         inputSurface!!.makeCurrent()

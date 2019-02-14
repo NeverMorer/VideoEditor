@@ -49,7 +49,10 @@ class MainActivity : Activity() {
 
             coder = VideoAudioCoder(videoPath!!, ENCODE_DEST_PATH + "aaa_aaa.mp4")
 
-//            coder!!.setWithAudio(false)
+            coder!!.setWithAudio(false)
+
+            coder!!.withScale(720, 480)
+            coder!!.withTrim(5000)
 
             coder!!.setCallback(object : VideoAudioCoder.ResultCallback {
                 override fun onSucceed() {

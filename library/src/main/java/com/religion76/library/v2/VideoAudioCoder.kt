@@ -12,7 +12,7 @@ import kotlin.Exception
  * Created by SunChao
  * on 2018/5/24.
  */
-class VideoAudioCoder(private val path: String, private val dest: String) : Runnable {
+class VideoAudioCoder(private val srcPath: String, private val dest: String) : Runnable {
 
     companion object {
         const val TAG = "VideoAudioCoder"
@@ -36,8 +36,6 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
 
     private var videoExtractTrackIndex = -1
     private var audioExtractTrackIndex = -1
-
-    private var isRotate = false
 
     private var callback: ResultCallback? = null
     private var callbackHandler: Handler? = null
@@ -68,6 +66,7 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
                             it.onSucceed()
                         }
                     }
+
                     release()
                 }
 
@@ -151,15 +150,12 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
         AppLogger.d(TAG, "setting scale width:$width  height:$height")
     }
 
-    fun setRotate(rotate: Boolean) {
-        this.isRotate = rotate
-    }
 
     private fun prepare(): Boolean {
         mediaMuxer = MediaMuxer(dest, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
 
         mediaExtractor = MediaExtractor()
-        mediaExtractor.setDataSource(path)
+        mediaExtractor.setDataSource(srcPath)
 
 
         for (i in 0 until mediaExtractor.trackCount) {
@@ -171,7 +167,7 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
                 audioExtractTrackIndex = i
             }
 
-            AppLogger.d("ddd", "mediaFormat: $trackFormat")
+            AppLogger.d(TAG, "mediaFormat: $trackFormat")
         }
 
         if (videoExtractTrackIndex < 0) {
@@ -192,10 +188,10 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
     }
 
     private fun initVideoCoder(trackFormat: MediaFormat): Boolean {
-        videoCoder = SeparateVideoCoder(path, mediaMuxer, mediaExtractor)
+        videoCoder = SeparateVideoCoder(srcPath, mediaMuxer, mediaExtractor)
         videoCoder.withScale(scaleWidth, scaleHeight)
         videoCoder.withTrim(startMs, endMs)
-        videoCoder.setRotate(isRotate)
+//        videoCoder.setRotate(isRotate)
         bitrate?.let {
             videoCoder.setBitrate(it)
         }
