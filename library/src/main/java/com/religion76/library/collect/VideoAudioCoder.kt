@@ -105,6 +105,7 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
 
     private fun prepare(): Boolean {
         mediaMuxer = MediaMuxer(dest, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+        mediaMuxer.setOrientationHint(90)
 
         mediaExtractor = MediaExtractor()
         mediaExtractor.setDataSource(path)

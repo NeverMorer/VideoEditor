@@ -11,7 +11,7 @@ import java.nio.ByteBuffer
  * Created by SunChao
  * on 2018/5/24.
  */
-class SeparateAudioWriter2(private val mediaMuxer: MediaMuxer, private val mediaExtractor: MediaExtractor) {
+class AudioDuplicator(private val mediaMuxer: MediaMuxer, private val mediaExtractor: MediaExtractor) {
 
     companion object {
         const val TAG = "SeparateAudioWriter"

@@ -10,7 +10,7 @@ import android.os.Environment
 import android.view.View
 import android.widget.Toast
 import com.religion76.library.AppLogger
-import com.religion76.library.v2.VideoAudioCoder2
+import com.religion76.library.v2.VideoAudioCoder
 import com.sw926.imagefileselector.PermissionsHelper
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.File
@@ -24,7 +24,7 @@ class MainActivity : Activity() {
 
     private var videoPath: String? = null
 
-    private var coder: VideoAudioCoder2? = null
+    private var coder: VideoAudioCoder? = null
 
     private val ENCODE_DEST_PATH = "${Environment.getExternalStorageDirectory().absolutePath}/compressed_video/"
 
@@ -47,11 +47,11 @@ class MainActivity : Activity() {
                 return@setOnClickListener
             }
 
-            coder = VideoAudioCoder2(videoPath!!, ENCODE_DEST_PATH + "aaad.mp4")
+            coder = VideoAudioCoder(videoPath!!, ENCODE_DEST_PATH + "aaa_aaa.mp4")
 
 //            coder!!.setWithAudio(false)
 
-            coder!!.setCallback(object : VideoAudioCoder2.ResultCallback {
+            coder!!.setCallback(object : VideoAudioCoder.ResultCallback {
                 override fun onSucceed() {
                     Toast.makeText(this@MainActivity, "compress succeed QvQ", Toast.LENGTH_SHORT).show()
                     pbExecute.visibility = View.GONE
@@ -64,7 +64,7 @@ class MainActivity : Activity() {
                 }
             })
 
-            Thread(coder!!).start()
+            coder!!.startAsync()
             pbExecute.visibility = View.VISIBLE
         }
 
@@ -85,7 +85,6 @@ class MainActivity : Activity() {
             videoView.suspend()
         }
 
-        videoPath = ENCODE_DEST_PATH + "aaac.mp4"
 
         val destFile = File(ENCODE_DEST_PATH)
         if (!destFile.exists()) {

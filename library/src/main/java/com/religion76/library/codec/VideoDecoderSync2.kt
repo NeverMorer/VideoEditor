@@ -78,6 +78,8 @@ class VideoDecoderSync2 {
             mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, frameRate)
             decoder.configure(mediaFormat, surface, null, 0)
 
+            Log.d(TAG, "decoder: $decoder")
+
         } catch (e: Exception) {
             Log.d(TAG, "decoder configure failed: $e")
             return false

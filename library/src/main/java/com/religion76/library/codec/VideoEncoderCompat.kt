@@ -1,7 +1,6 @@
 package com.religion76.library.codec
 
 import android.media.MediaCodec
-import android.media.MediaCodecInfo
 import android.media.MediaCodecList
 import android.media.MediaFormat
 import android.os.Build
@@ -36,12 +35,11 @@ class VideoEncoderCompat(private val callback: MediaCodecCallback) {
         return null
     }
 
-    fun configure(inputFormat: MediaFormat, mediaInfo: MediaInfo, bitRate: Int?): Surface? {
+    fun configure(inputFormat: MediaFormat, outputFormat:MediaFormat): Surface? {
         initCodec(inputFormat)
         val codec = encoder ?: encoderCompat?.codec ?: throw IllegalStateException("no codec")
-        val mediaFormat = buildEncodeOutputMediaFormat(inputFormat, mediaInfo, bitRate)
         try {
-            codec.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+            codec.configure(outputFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
         } catch (e: Exception) {
             AppLogger.d("VideoEncoderCompat", e)
             return null
@@ -53,7 +51,13 @@ class VideoEncoderCompat(private val callback: MediaCodecCallback) {
     private fun initCodec(mediaFormat: MediaFormat) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             //save frame rate
-            val frameRate = mediaFormat.getInteger(MediaFormat.KEY_FRAME_RATE)
+            var frameRate = MediaInfo.FRAME_RATE
+
+            try {
+                frameRate = mediaFormat.getInteger(MediaFormat.KEY_FRAME_RATE)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
 
             encoder = findEncoder(mediaFormat)
 
@@ -96,23 +100,6 @@ class VideoEncoderCompat(private val callback: MediaCodecCallback) {
         }
     }
 
-    private fun buildEncodeOutputMediaFormat(inputFormat: MediaFormat, mediaInfo: MediaInfo?, bitRate: Int?): MediaFormat {
-        val rotate = mediaInfo?.getRotation() ?: 0
-        val width = if (rotate == 90 || rotate == 270) inputFormat.getInteger(MediaFormat.KEY_HEIGHT) else inputFormat.getInteger(MediaFormat.KEY_WIDTH)
-        val height = if (rotate == 90 || rotate == 270) inputFormat.getInteger(MediaFormat.KEY_WIDTH) else inputFormat.getInteger(MediaFormat.KEY_HEIGHT)
-//        val mediaFormat = MediaFormat.createVideoFormat("video/avc", (width * 0.8f).toInt(), (height * 0.8).toInt())
-        val mediaFormat = MediaFormat.createVideoFormat("video/avc", width, height)
-
-//        mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, CodecFormatUtils.getVideoCompatibilityColorFormat(mediaCodecInfo, "video/avc"))
-        mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
-        mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 30)
-        mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1)
-        mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, bitRate
-                ?: (width * height * 30 * 0.3).toInt())
-//        mediaFormat.setInteger(MediaFormat.KEY_ROTATION, rotate)
-
-        return mediaFormat
-    }
 
     fun getInputBuffer(index: Int): ByteBuffer? {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {

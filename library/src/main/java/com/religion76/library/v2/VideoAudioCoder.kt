@@ -6,23 +6,21 @@ import android.media.MediaMuxer
 import android.os.Handler
 import android.os.Looper
 import com.religion76.library.AppLogger
-import com.religion76.library.collect.SeparateAudioWriter
-import com.religion76.library.collect.VideoAudioCoder
 import kotlin.Exception
 
 /**
  * Created by SunChao
  * on 2018/5/24.
  */
-class VideoAudioCoder2(private val path: String, private val dest: String) : Runnable {
+class VideoAudioCoder(private val path: String, private val dest: String) : Runnable {
 
     companion object {
         const val TAG = "VideoAudioCoder"
     }
 
-    private lateinit var videoCoder: SeparateVideoCoder2
+    private lateinit var videoCoder: SeparateVideoCoder
 
-    private var audioCoder: SeparateAudioWriter2? = null
+    private var audioCoder: AudioDuplicator? = null
     private var audioFormat: MediaFormat? = null
 
     private lateinit var mediaMuxer: MediaMuxer
@@ -95,6 +93,14 @@ class VideoAudioCoder2(private val path: String, private val dest: String) : Run
                 }
             }
         }
+    }
+
+    fun startAsync(){
+        Thread(this).start()
+    }
+
+    fun startSync(){
+        run()
     }
 
     private fun executeVideo() {
@@ -186,7 +192,7 @@ class VideoAudioCoder2(private val path: String, private val dest: String) : Run
     }
 
     private fun initVideoCoder(trackFormat: MediaFormat): Boolean {
-        videoCoder = SeparateVideoCoder2(path, mediaMuxer, mediaExtractor)
+        videoCoder = SeparateVideoCoder(path, mediaMuxer, mediaExtractor)
         videoCoder.withScale(scaleWidth, scaleHeight)
         videoCoder.withTrim(startMs, endMs)
         videoCoder.setRotate(isRotate)
@@ -198,7 +204,7 @@ class VideoAudioCoder2(private val path: String, private val dest: String) : Run
     }
 
     private fun initAudioCoder() {
-        audioCoder = SeparateAudioWriter2(mediaMuxer, mediaExtractor)
+        audioCoder = AudioDuplicator(mediaMuxer, mediaExtractor)
         audioCoder!!.withTrim(startMs, endMs)
 //        audioCoder.prepare(trackFormat)
     }

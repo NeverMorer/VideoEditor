@@ -1,17 +1,15 @@
 package com.religion76.library.v2
 
-import android.media.MediaCodec
-import android.media.MediaExtractor
-import android.media.MediaFormat
-import android.media.MediaMuxer
+import android.media.*
 import android.os.Handler
 import android.util.Log
 import com.religion76.library.AppLogger
-import com.religion76.library.gles.*
 import com.religion76.library.MediaInfo
 import com.religion76.library.codec.MediaCodecCallback
 import com.religion76.library.codec.VideoDecoderSync2
 import com.religion76.library.codec.VideoEncoderCompat
+import com.religion76.library.gles.InputSurface
+import com.religion76.library.gles.OutputSurface
 import java.lang.Exception
 import java.nio.ByteBuffer
 import java.util.*
@@ -21,7 +19,7 @@ import java.util.concurrent.ArrayBlockingQueue
  * Created by SunChao
  * on 2018/5/24.
  */
-class SeparateVideoCoder2(private val path: String, private val mediaMuxer: MediaMuxer, private val mediaExtractor: MediaExtractor) {
+class SeparateVideoCoder(private val path: String, private val mediaMuxer: MediaMuxer, private val mediaExtractor: MediaExtractor) {
 
     companion object {
         const val TAG = "SeparateVideoCoder"
@@ -30,8 +28,6 @@ class SeparateVideoCoder2(private val path: String, private val mediaMuxer: Medi
     private var videoEncoder: VideoEncoderCompat? = null
 
     private var videoDecoder: VideoDecoderSync2? = null
-
-    private var frameRender: FrameRender? = null
 
     private lateinit var mediaInfo: MediaInfo
 
@@ -52,6 +48,9 @@ class SeparateVideoCoder2(private val path: String, private val mediaMuxer: Medi
 
     private var lastFrameTime: Long = -1
     private var lastFrameTimeTemp: Long = -1
+
+    private var inputSurface: InputSurface? = null
+    private var outputSurface: OutputSurface? = null
 
     //it's should be support via use GLES on the way to encoder
     fun withScale(width: Int? = null, height: Int? = null) {
@@ -99,7 +98,9 @@ class SeparateVideoCoder2(private val path: String, private val mediaMuxer: Medi
     private fun initDecoder(mediaFormat: MediaFormat): Boolean {
         videoDecoder = VideoDecoderSync2()
 
-        if (!videoDecoder!!.prepare(mediaFormat, mediaExtractor, frameRender!!.getDecodeOutputSurface())) {
+        outputSurface = OutputSurface()
+
+        if (!videoDecoder!!.prepare(mediaFormat, mediaExtractor, outputSurface!!.surface)) {
             return false
         }
 
@@ -109,7 +110,16 @@ class SeparateVideoCoder2(private val path: String, private val mediaMuxer: Medi
             AppLogger.d(TAG, "decode_buffer_offset: ${bufferInfo.offset}")
             AppLogger.d(TAG, "decode_buffer_flag: ${bufferInfo.flags}")
             lastFrameTimeTemp = bufferInfo.presentationTimeUs
-            frameRender?.draw(bufferInfo.presentationTimeUs)
+
+            if (inputSurface != null && outputSurface != null) {
+                outputSurface!!.awaitNewImage()
+                outputSurface!!.drawImage()
+
+                inputSurface!!.setPresentationTime(bufferInfo.presentationTimeUs * 1000)
+                inputSurface!!.swapBuffers()
+            }
+
+//            frameRender?.draw(bufferInfo.presentationTimeUs)
         }
 
         videoDecoder!!.onDecodeFinish = {
@@ -123,13 +133,15 @@ class SeparateVideoCoder2(private val path: String, private val mediaMuxer: Medi
         videoEncoder = VideoEncoderCompat(object : MediaCodecCallback {
             override fun onInputBufferAvailable(codec: MediaCodec, index: Int, inputBuffer: ByteBuffer?) {
                 Log.d(TAG, "encoder_onInputBufferAvailable")
+
             }
 
             override fun onOutputBufferAvailable(codec: MediaCodec, index: Int, info: MediaCodec.BufferInfo, outputBuffer: ByteBuffer?) {
                 Log.d(TAG, "encoder_onOutputBufferAvailable")
+                Log.d(TAG, "encoder_lastFrameTime: $lastFrameTime")
+                Log.d(TAG, "encoder_bufferTime: ${info.presentationTimeUs}")
                 if (info.flags == MediaCodec.BUFFER_FLAG_END_OF_STREAM || (lastFrameTime > 0 && info.presentationTimeUs >= lastFrameTime)) {
-                    Log.d(TAG, "encoder_lastFrameTime: $lastFrameTime")
-                    Log.d(TAG, "encoder_bufferTime: ${info.presentationTimeUs}")
+
                     Log.d(TAG, "encoder_receive end")
                     releaseEncoder()
 
@@ -150,6 +162,7 @@ class SeparateVideoCoder2(private val path: String, private val mediaMuxer: Medi
                             flushSampleQueue(codec)
 
                             videoEncoder?.getOutputBuffer(index)?.let { outputBuffer ->
+                                Log.d(TAG, "muxer_sample_bufferTime: ${info.presentationTimeUs}")
                                 mediaMuxer.writeSampleData(muxTrackIndex, outputBuffer, info)
                             }
 
@@ -192,14 +205,35 @@ class SeparateVideoCoder2(private val path: String, private val mediaMuxer: Medi
 
         })
 
-        val surface = videoEncoder!!.configure(mediaFormat, mediaInfo, bitrate) ?: return false
+        val encoderSurface = videoEncoder!!.configure(mediaFormat, buildEncodeOutputMediaFormat(mediaFormat, mediaInfo, bitrate)) ?: return false
 
-        //todo try catch error when device not support egl
-        frameRender = FrameRender()
-        frameRender!!.init(surface)
+        inputSurface = InputSurface(encoderSurface)
+        inputSurface!!.makeCurrent()
 
         return true
     }
+
+    private fun buildEncodeOutputMediaFormat(inputFormat: MediaFormat, mediaInfo: MediaInfo?, bitRate: Int?): MediaFormat {
+        val rotate = mediaInfo?.getRotation() ?: 0
+
+        val originWidth = mediaInfo?.getWidth() ?: inputFormat.getInteger(MediaFormat.KEY_WIDTH)
+        val originHeight = mediaInfo?.getHeight() ?: inputFormat.getInteger(MediaFormat.KEY_HEIGHT)
+
+        val width = if (rotate == 90 || rotate == 270) originHeight else originWidth
+        val height = if (rotate == 90 || rotate == 270) originWidth else originHeight
+
+        val mediaFormat = MediaFormat.createVideoFormat("video/avc", width, height)
+
+        mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
+        mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, MediaInfo.FRAME_RATE)
+        mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, MediaInfo.IFRAMEINTERVAL)
+        mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, bitRate
+                ?: (width * height * 30 * 0.3).toInt())
+//        mediaFormat.setInteger(MediaFormat.KEY_ROTATION, rotate)
+
+        return mediaFormat
+    }
+
 
     private fun flushSampleQueue(encoder: MediaCodec) {
         while (sampleIndexQueue.size > 0) {
@@ -218,8 +252,6 @@ class SeparateVideoCoder2(private val path: String, private val mediaMuxer: Medi
     private val sampleInfoQueue: Queue<MediaCodec.BufferInfo> = ArrayBlockingQueue<MediaCodec.BufferInfo>(5)
 
     private var isPrepared = false
-
-    var isCoderDone = false
 
     fun start() {
 
@@ -260,10 +292,10 @@ class SeparateVideoCoder2(private val path: String, private val mediaMuxer: Medi
         releaseEncoder()
         releaseDecoder()
 
-        if (frameRender != null) {
-            frameRender!!.release()
-            frameRender = null
-        }
+        inputSurface?.release()
+        inputSurface = null
 
+        outputSurface?.release()
+        outputSurface = null
     }
 }
