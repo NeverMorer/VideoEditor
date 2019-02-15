@@ -35,7 +35,7 @@ class VideoEncoderCompat(private val callback: MediaCodecCallback) {
         return null
     }
 
-    fun configure(inputFormat: MediaFormat, outputFormat:MediaFormat): Surface? {
+    fun configure(inputFormat: MediaFormat, outputFormat: MediaFormat): Surface? {
         initCodec(inputFormat)
         val codec = encoder ?: encoderCompat?.codec ?: throw IllegalStateException("no codec")
         try {
@@ -123,6 +123,10 @@ class VideoEncoderCompat(private val callback: MediaCodecCallback) {
         } else if (encoderCompat != null) {
             encoderCompat?.start(MediaCodecCompat.MSG_DRAIN_OUTPUT)
         }
+    }
+
+    fun stop() {
+        encoderCompat?.stop()
     }
 
     fun release() {

@@ -51,8 +51,8 @@ class MainActivity : Activity() {
 
             coder!!.setWithAudio(false)
 
-            coder!!.withScale(720, 480)
-            coder!!.withTrim(5000)
+//            coder!!.withScale(720, 480)
+//            coder!!.withTrim(5000)
 
             coder!!.setCallback(object : VideoAudioCoder.ResultCallback {
                 override fun onSucceed() {
@@ -67,7 +67,7 @@ class MainActivity : Activity() {
                 }
             })
 
-            coder!!.startAsync()
+            Thread(coder!!).start()
             pbExecute.visibility = View.VISIBLE
         }
 

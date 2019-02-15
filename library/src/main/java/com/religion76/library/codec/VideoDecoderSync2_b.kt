@@ -1,26 +1,22 @@
 package com.religion76.library.codec
 
 import android.media.MediaCodec
-import android.media.MediaCodecList
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.os.Build
-import android.support.annotation.RequiresApi
-import android.util.Log
 import android.view.Surface
 import com.religion76.library.AppLogger
-import com.religion76.library.MediaInfo
 import java.nio.ByteBuffer
 
 /**
  * Created by SunChao
  * on 2018/3/3.
  */
-class VideoDecoderSync2 {
+class VideoDecoderSync2_b {
 
     companion object {
         const val TAG = "MediaCoder_Decoder"
-        const val DEFAULT_QUEUE_TIMEOUT = 1000L
+        const val DEFAULT_QUEUE_TIMEOUT = 10000L
     }
 
     private lateinit var extractor: MediaExtractor
@@ -56,45 +52,22 @@ class VideoDecoderSync2 {
 
     var onOutputBufferGenerate: ((bufferInfo: MediaCodec.BufferInfo) -> Unit)? = null
 
+
     fun queueEOS() {
         if (!isDecodeFinish) {
-            Log.d(TAG, "------------- decoder queueEOS ------------")
+            AppLogger.d(TAG, "------------- decoder queueEOS ------------")
             isEOSNeed = true
         }
     }
 
     fun prepare(mediaFormat: MediaFormat, mediaExtractor: MediaExtractor, surface: Surface): Boolean {
-        Log.d(TAG, "on decoder configured $mediaFormat")
+        AppLogger.d(TAG, "on decoder configured $mediaFormat")
         try {
-            //save frame rate data
-            var frameRate: Int? = null
-
-            try {
-                frameRate = mediaFormat.getInteger(MediaFormat.KEY_FRAME_RATE)
-                mediaFormat.setString(MediaFormat.KEY_FRAME_RATE, null)
-            } catch (e: Exception) {
-                Log.d(TAG, "origin source no frame_rate")
-            }
-
-            decoder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                findDecoder(mediaFormat)
-                        ?: MediaCodec.createDecoderByType(mediaFormat.getString(MediaFormat.KEY_MIME))
-            } else {
-                MediaCodec.createDecoderByType(mediaFormat.getString(MediaFormat.KEY_MIME))
-            }
-
-            AppLogger.d(TAG, "decoder ins: $decoder")
-
-            if (frameRate != null){
-                //restore frame rate data
-                mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, frameRate)
-            }
+            decoder = MediaCodec.createDecoderByType(mediaFormat.getString(MediaFormat.KEY_MIME))
             decoder.configure(mediaFormat, surface, null, 0)
-
-            Log.d(TAG, "decoder: $decoder")
-
+            decoder.start()
         } catch (e: Exception) {
-            Log.d(TAG, "decoder configure failed: $e")
+            AppLogger.d(TAG, "decoder configure failed")
             return false
         }
 
@@ -102,21 +75,6 @@ class VideoDecoderSync2 {
         extractor = mediaExtractor
 
         return true
-    }
-
-    fun start() {
-        decoder.start()
-    }
-
-    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-    private fun findDecoder(mediaFormat: MediaFormat): MediaCodec? {
-        mediaFormat.setString(MediaFormat.KEY_FRAME_RATE, null)
-        val codecName = MediaCodecList(1).findDecoderForFormat(mediaFormat)
-        if (!codecName.isNullOrEmpty()) {
-            return MediaCodec.createByCodecName(codecName)
-        }
-
-        return null
     }
 
     fun pull(): Boolean {
@@ -129,34 +87,34 @@ class VideoDecoderSync2 {
             false
         } else {
             val bufferInfo = MediaCodec.BufferInfo()
-
             val outputBufferIndex = decoder.dequeueOutputBuffer(bufferInfo, DEFAULT_QUEUE_TIMEOUT)
 
             //double check isDecodeFinish because last code is block
             when (outputBufferIndex) {
                 MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED -> {
-                    Log.d(TAG, "decoder output INFO_OUTPUT_BUFFERS_CHANGED")
+                    AppLogger.d(TAG, "decoder output INFO_OUTPUT_BUFFERS_CHANGED")
                     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
                         outputBuffers = decoder.outputBuffers
                     }
                 }
                 MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                    Log.d(TAG, "decoder output INFO_OUTPUT_FORMAT_CHANGED")
+                    AppLogger.d(TAG, "decoder output INFO_OUTPUT_FORMAT_CHANGED")
                 }
                 MediaCodec.INFO_TRY_AGAIN_LATER -> {
-                    Log.d(TAG, "decoder output INFO_TRY_AGAIN_LATER")
+                    AppLogger.d(TAG, "decoder output INFO_TRY_AGAIN_LATER")
                 }
                 else -> {
                     if (bufferInfo.flags.and(MediaCodec.BUFFER_FLAG_END_OF_STREAM) == 0) {
-                        Log.d(TAG, "decoder output generate sample data")
-                        if (bufferInfo.size > 0) {
+                        AppLogger.d(TAG, "decoder output generate sample data")
+                        if (bufferInfo.size > 0){
                             decoder.releaseOutputBuffer(outputBufferIndex, isRender)
                             onOutputBufferGenerate?.invoke(bufferInfo)
-                        } else {
+                        }else{
                             decoder.releaseOutputBuffer(outputBufferIndex, false)
                         }
+
                     } else {
-                        Log.d(TAG, "=== decoder end of stream ===")
+                        AppLogger.d(TAG, "=== decoder end of stream ===")
                         isDecodeFinish = true
                         onDecodeFinish?.invoke()
                     }
@@ -173,23 +131,20 @@ class VideoDecoderSync2 {
             return
         }
 
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            if (inputBuffers == null) {
-                inputBuffers = decoder.inputBuffers
-            }
+        if (inputBuffers == null){
+            inputBuffers = decoder.inputBuffers
         }
 
         val inputBufferIndex = decoder.dequeueInputBuffer(DEFAULT_QUEUE_TIMEOUT)
         //double check isDecodeFinish because last code is block
         if (inputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
-            Log.d(TAG, "decoder input INFO_OUTPUT_BUFFERS_CHANGED")
+            AppLogger.d(TAG, "decoder input INFO_OUTPUT_BUFFERS_CHANGED")
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
                 inputBuffers = decoder.inputBuffers
             }
         } else if (inputBufferIndex >= 0) {
-
             if (isEOSNeed) {
-                Log.d(TAG, "------------- queue EOS ------------")
+                AppLogger.d(TAG, "------------- queue EOS ------------")
                 decoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
                 isEOSNeed = false
             } else {
@@ -197,15 +152,13 @@ class VideoDecoderSync2 {
                 inputBuffer?.let {
                     val sampleSize = extractor.readSampleData(inputBuffer, 0)
                     if (sampleSize < 0) {
-                        Log.d(TAG, "InputBuffer BUFFER_FLAG_END_OF_STREAM")
+                        AppLogger.d(TAG, "InputBuffer BUFFER_FLAG_END_OF_STREAM")
                         decoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
                     } else {
                         //here to filter sample data by limit duration
-                        Log.d(TAG, "InputBuffer queueInputBuffer")
+                        AppLogger.d(TAG, "InputBuffer queueInputBuffer")
                         decoder.queueInputBuffer(inputBufferIndex, 0, sampleSize, extractor.sampleTime, 0)
-                        if (!extractor.advance()) {
-                            isEOSNeed = true
-                        }
+                        extractor.advance()
                     }
                 }
             }

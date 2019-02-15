@@ -1,16 +1,12 @@
 package com.religion76.library.collect
 
-import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMuxer
-import android.util.Log
 import com.religion76.library.AppLogger
-import com.religion76.library.gles.*
 import com.religion76.library.MediaInfo
-import com.religion76.library.codec.VideoDecoderSync2
-import java.util.*
-import java.util.concurrent.ArrayBlockingQueue
+import com.religion76.library.codec.VideoDecoderSync2_b
+import com.religion76.library.gles.*
 
 /**
  * Created by SunChao
@@ -24,11 +20,15 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
 
     private lateinit var videoEncoder: VideoEncoderSync
 
-    private lateinit var videoDecoder: VideoDecoderSync2
+    private lateinit var videoDecoder: VideoDecoderSync2_b
+
+    private lateinit var encodeSurface: WindowSurface
+
+    private lateinit var outputSurface: CodecOutputSurface2
 
     private lateinit var mediaInfo: MediaInfo
 
-    private val frameRender = FrameRender()
+    private lateinit var eglCore: EglCore
 
     private var muxTrackIndex: Int = -1
 
@@ -78,17 +78,46 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
         return initEncoder(trackFormat.getString(MediaFormat.KEY_MIME)) && initDecoder(trackFormat)
     }
 
+    private fun initTexture() {
+
+        eglCore = EglCore(null, EglCore.FLAG_RECORDABLE)
+
+        encodeSurface = WindowSurface(eglCore, videoEncoder.getSurface(), true)
+
+        encodeSurface.makeCurrent()
+
+        outputSurface = CodecOutputSurface2()
+    }
 
     @Volatile
     private var isNewFrameAvailable: Boolean = false
 
-    @Volatile
-    private var isMuxStart: Boolean = false
+    private fun draw(presentTime:Long) {
+        AppLogger.d(TAG, "draw")
+
+        outputSurface.awaitNewImage()
+
+        encodeSurface.makeCurrent()
+
+        if (isRotate) {
+            outputSurface.drawImage(false)
+        } else {
+            outputSurface.drawImage(false, if (isRotate) mediaInfo.getRotation() else 0)
+        }
+
+        encodeSurface.setPresentationTime(presentTime * 1000)
+
+        encodeSurface.swapBuffers()
+
+        isNewFrameAvailable = true
+
+        AppLogger.d(TAG, "draw_over")
+    }
 
     private fun initDecoder(mediaFormat: MediaFormat): Boolean {
-        videoDecoder = VideoDecoderSync2()
+        videoDecoder = VideoDecoderSync2_b()
 
-        if (!videoDecoder.prepare(mediaFormat, mediaExtractor, frameRender.getDecodeOutputSurface())) {
+        if (!videoDecoder.prepare(mediaFormat, mediaExtractor, outputSurface.surface)) {
             return false
         }
 
@@ -96,16 +125,13 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
             AppLogger.d(TAG, "onOutputBufferGenerate")
             AppLogger.d(TAG, "decode_presentationTimeUs: ${bufferInfo.presentationTimeUs}")
 
-            Log.d("bbb1", "b4")
+            draw(bufferInfo.presentationTimeUs)
 
-            frameRender.draw(bufferInfo.presentationTimeUs)
-            isNewFrameAvailable = true
-
-            Log.d("bbb1", "b5")
         }
 
         videoDecoder.onDecodeFinish = {
             AppLogger.d(TAG, "onDecodeFinish")
+            encodeSurface.release()
             videoEncoder.queueEOS()
         }
 
@@ -115,99 +141,82 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
     private fun initEncoder(mimeType: String): Boolean {
         videoEncoder = VideoEncoderSync()
 
-        videoEncoder.onOutputFormatChanged = {
-
-            //video encode need format include csd-0 & csd-1 data
-
-            if (muxTrackIndex == -1) {
-                AppLogger.d(TAG, "video encode outputFormat:${videoEncoder.getOutputFormat()}")
-                muxTrackIndex = mediaMuxer.addTrack(videoEncoder.getOutputFormat())
-                AppLogger.d(TAG, "video encode muxer track index:$muxTrackIndex")
-                mediaMuxer.start()
-                isMuxStart = true
-            }
-        }
-
-        videoEncoder.onSampleEncoded = { bufferIndex, bufferInfo ->
-            AppLogger.d(TAG, "onSampleEncode")
-
-            AppLogger.d(TAG, "encode_presentationTimeUs: ${bufferInfo.presentationTimeUs}")
-
-            if (bufferInfo.size > 0){
-                if (endMs != null && bufferInfo.presentationTimeUs > endMs!! * 1000 && !videoDecoder.isDecodeFinish) {
-                    AppLogger.d(TAG, "------------- end trim ------------")
-                    videoDecoder.queueEOS()
-                    videoEncoder.queueEOS()
-                } else {
-                    writeSample(bufferIndex, bufferInfo)
-                }
-            }
-
-        }
-
         if (!videoEncoder.prepare(mimeType, mediaInfo, bitrate)) {
             return false
         }
 
         //todo try catch error when device not support egl
-        frameRender.init(videoEncoder.getSurface())
+        initTexture()
+
+        videoEncoder.onSampleEncode = { dataBuffer, bufferInfo ->
+            AppLogger.d(TAG, "onSampleEncode")
+
+            //video encode need format include csd-0 & csd-1 data
+            if (muxTrackIndex == -1) {
+                AppLogger.d(TAG, "video encode outputFormat:${videoEncoder.getOutputFormat()}")
+                muxTrackIndex = mediaMuxer.addTrack(videoEncoder.getOutputFormat())
+                AppLogger.d(TAG, "video encode muxer track index:$muxTrackIndex")
+                mediaMuxer.start()
+            }
+
+            AppLogger.d(TAG, "encode_presentationTimeUs: ${bufferInfo.presentationTimeUs}")
+
+            if (endMs != null && bufferInfo.presentationTimeUs > endMs!! * 1000 && !videoDecoder.isDecodeFinish) {
+                AppLogger.d(TAG, "------------- end trim ------------")
+                videoDecoder.queueEOS()
+                videoEncoder.queueEOS()
+            } else {
+                mediaMuxer.writeSampleData(muxTrackIndex, dataBuffer, bufferInfo)
+            }
+        }
 
         return true
     }
 
-    private val sampleIndexQueue: Queue<Int> = ArrayBlockingQueue<Int>(5)
-    private val sampleInfoQueue: Queue<MediaCodec.BufferInfo> = ArrayBlockingQueue<MediaCodec.BufferInfo>(5)
-
-    private fun writeSample(bufferIndex: Int, bufferInfo: MediaCodec.BufferInfo) {
-        if (muxTrackIndex == -1) {
-            sampleIndexQueue.offer(bufferIndex)
-            sampleInfoQueue.offer(bufferInfo)
-            AppLogger.d("ddd", "writeSample queue")
-        } else {
-            AppLogger.d("ddd", "writeSample execute")
-            while (sampleIndexQueue.size > 0) {
-                val nextBufferIndex = sampleIndexQueue.poll()
-                val nextBufferInfo = sampleInfoQueue.poll()
-                mediaMuxer.writeSampleData(muxTrackIndex, videoEncoder.outputBuffers[nextBufferIndex], nextBufferInfo)
-            }
-
-            mediaMuxer.writeSampleData(muxTrackIndex, videoEncoder.outputBuffers[bufferIndex], bufferInfo)
-        }
-    }
 
     var isCoderDone = false
 
     fun drain() {
         if (!isCoderDone) {
-            if (videoDecoder.isDecodeFinish && videoEncoder.isEncodeFinish) {
-                isCoderDone = true
-                release()
-            } else {
+            if (videoDecoder.isDecodeFinish) {
 
-                if (isNewFrameAvailable || !isMuxStart) {
-                    isNewFrameAvailable = false
-                    videoEncoder.drain()
+                if (videoEncoder.isEncodeFinish) {
+                    AppLogger.d(TAG, "end")
+                    isCoderDone = true
+                    release()
                 }
+
+            } else {
+//                if (isNewFrameAvailable) {
+//                    isNewFrameAvailable = false
+//                    videoEncoder.drain()
+//                }
 
                 videoDecoder.enqueueData()
-
                 videoDecoder.pull()
 
-                if (videoEncoder.isEOSNeed) {
-                    videoEncoder.signEOS()
-                }
+            }
+        }
+    }
 
-                if (videoEncoder.isEOSQueue) {
-                    AppLogger.d(TAG, "drain from ")
-                    videoEncoder.drain()
-                }
+    fun drainEncoder(){
+        while (!videoEncoder.isEncodeFinish){
+            Thread.sleep(200)
+
+            videoEncoder.drain()
+
+            if (videoEncoder.isEOSNeed) {
+                videoEncoder.signEOS()
             }
         }
     }
 
     fun release() {
         AppLogger.d(TAG, "release")
-        frameRender.release()
+        eglCore.release()
+        encodeSurface.release()
+        outputSurface.release()
+
         videoDecoder.release()
         videoEncoder.release()
     }

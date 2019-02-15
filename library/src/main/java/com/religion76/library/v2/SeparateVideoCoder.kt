@@ -108,6 +108,7 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
             lastFrameTimeTemp = bufferInfo.presentationTimeUs
 
             if (inputSurface != null && outputSurface != null) {
+
                 outputSurface!!.awaitNewImage()
                 outputSurface!!.drawImage()
 
@@ -135,6 +136,7 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
                 if (info.flags == MediaCodec.BUFFER_FLAG_END_OF_STREAM || (lastFrameTime > 0 && info.presentationTimeUs >= lastFrameTime)) {
 
                     Log.d(TAG, "encoder_receive end")
+                    videoEncoder?.stop()
                     releaseEncoder()
 
                     callback?.let {
@@ -145,14 +147,14 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
 
                 } else {
                     if (info.size > 0) {
+                        prepareMuxer(mediaFormat, codec)
+
                         if (muxTrackIndex == -1) {
                             sampleIndexQueue.offer(index)
                             sampleInfoQueue.offer(info)
                         } else {
                             flushSampleQueue(codec)
-
                             videoEncoder?.getOutputBuffer(index)?.let { outputBuffer ->
-                                Log.d(TAG, "muxer_sample_bufferTime: ${info.presentationTimeUs}")
 
                                 if (startMs != null) {
                                     val startTimeUs = startMs!! * 1000
@@ -180,26 +182,7 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
 
             override fun onOutputFormatChanged(codec: MediaCodec, format: MediaFormat) {
                 Log.d(TAG, "encoder_onOutputFormatChanged")
-                muxTrackIndex = mediaMuxer.addTrack(format)
-
-                callback?.let {
-                    callbackHandler?.post {
-                        it.onMediaTrackReady()
-                    } ?: it.onMediaTrackReady()
-                }
-
-                if (muxTrackIndex > -1) {
-                    mediaMuxer.start()
-                    flushSampleQueue(codec)
-                } else {
-                    codec.signalEndOfInputStream()
-
-                    callback?.let {
-                        callbackHandler?.post {
-                            it.onError(Exception("muxer add track failed ..."))
-                        } ?: it.onError(Exception("muxer add track failed ..."))
-                    }
-                }
+                prepareMuxer(mediaFormat, codec)
             }
 
         })
@@ -211,6 +194,35 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
         inputSurface!!.makeCurrent()
 
         return true
+    }
+
+    private fun prepareMuxer(mediaFormat: MediaFormat, encoder: MediaCodec){
+        if (muxTrackIndex >= 0){
+            return
+        }
+
+        AppLogger.d("qqq", "muxer video format: $mediaFormat")
+
+        muxTrackIndex = mediaMuxer.addTrack(mediaFormat)
+
+        callback?.let {
+            callbackHandler?.post {
+                it.onMediaTrackReady()
+            } ?: it.onMediaTrackReady()
+        }
+
+        if (muxTrackIndex > -1) {
+            mediaMuxer.start()
+            flushSampleQueue(encoder)
+        } else {
+            encoder.signalEndOfInputStream()
+
+            callback?.let {
+                callbackHandler?.post {
+                    it.onError(Exception("muxer add track failed ..."))
+                } ?: it.onError(Exception("muxer add track failed ..."))
+            }
+        }
     }
 
     private fun buildEncodeOutputMediaFormat(inputFormat: MediaFormat, mediaInfo: MediaInfo?, bitRate: Int?): MediaFormat {

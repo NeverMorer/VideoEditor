@@ -15,7 +15,7 @@ import kotlin.Exception
 class VideoAudioCoder(private val path: String, private val dest: String) : Runnable {
 
     companion object {
-        const val TAG = "VideoAudioCoder"
+        const val TAG = "VideoAudioCoder_"
     }
 
     private lateinit var videoCoder: SeparateVideoCoder
@@ -158,6 +158,10 @@ class VideoAudioCoder(private val path: String, private val dest: String) : Runn
     }
 
     private fun loop() {
+        Thread {
+            videoCoder.drainEncoder()
+        }.start()
+
         while (true) {
             if (!videoCoder.isCoderDone) {
                 if (!isVideoTrackSelect) {

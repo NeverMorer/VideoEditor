@@ -35,6 +35,8 @@ class MediaCodecCompat(val codec: MediaCodec) {
 
     private var callbackHandler: Handler? = null
 
+    private var isStop = false
+
     private val bufferInfo by lazy {
         MediaCodec.BufferInfo()
     }
@@ -49,27 +51,30 @@ class MediaCodecCompat(val codec: MediaCodec) {
         handlerThread.start()
 
         val handler = Handler(handlerThread.looper) { message ->
-            when (message.what) {
-                MSG_DRAIN_INPUT -> {
-                    drainInput()
-                    handler?.sendEmptyMessage(MSG_DRAIN_INPUT)
-                }
-                MSG_DRAIN_OUTPUT -> {
-                    drainOutput()
-                    handler?.sendEmptyMessage(MSG_DRAIN_OUTPUT)
-                }
+            if (!isStop){
+                when (message.what) {
+                    MSG_DRAIN_INPUT -> {
+                        drainInput()
+                        handler?.sendEmptyMessage(MSG_DRAIN_INPUT)
+                    }
+                    MSG_DRAIN_OUTPUT -> {
+                        drainOutput()
+                        handler?.sendEmptyMessage(MSG_DRAIN_OUTPUT)
+                    }
 
-                MSG_DRAIN_INPUT_OUTPUT -> {
-                    drain()
-                    handler?.sendEmptyMessage(MSG_DRAIN_INPUT_OUTPUT)
-                }
-                MSG_END -> {
-                    handler?.looper?.quit()
-                }
-                else -> {
+                    MSG_DRAIN_INPUT_OUTPUT -> {
+                        drain()
+                        handler?.sendEmptyMessage(MSG_DRAIN_INPUT_OUTPUT)
+                    }
+                    MSG_END -> {
+                        handler?.looper?.quit()
+                    }
+                    else -> {
+                    }
                 }
             }
-            false
+
+            true
         }
 
         this.handler = handler
@@ -98,6 +103,10 @@ class MediaCodecCompat(val codec: MediaCodec) {
         }
     }
 
+    fun stop(){
+        isStop = true
+    }
+
     private fun drain() {
         drainInput()
         drainOutput()
@@ -116,7 +125,7 @@ class MediaCodecCompat(val codec: MediaCodec) {
     private fun drainOutput() {
 
         val outputBufferIndex = codec.dequeueOutputBuffer(bufferInfo, TIME_OUT)
-        if (outputBufferIndex > 0) {
+        if (outputBufferIndex >= 0) {
             Log.d(TAG, "encoder output data index:$outputBufferIndex")
             when {
                 outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER -> {

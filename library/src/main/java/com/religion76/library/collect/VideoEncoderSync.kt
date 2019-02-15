@@ -152,7 +152,7 @@ class VideoEncoderSync {
 
         val bufferInfo = MediaCodec.BufferInfo()
         val outputBufferIndex = encoder.dequeueOutputBuffer(bufferInfo, 1000)
-        if (outputBufferIndex > 0) {
+        if (outputBufferIndex >= 0) {
             AppLogger.d(TAG, "encoder output data index:$outputBufferIndex")
             when {
                 outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER -> {
