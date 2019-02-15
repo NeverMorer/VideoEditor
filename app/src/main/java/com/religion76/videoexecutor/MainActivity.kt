@@ -76,12 +76,14 @@ class MainActivity : Activity() {
                 return@setOnClickListener
             }
 
-            if (videoView.isPlaying) {
-                videoView.suspend()
-            }
+//            if (videoView.isPlaying) {
+//                videoView.suspend()
+//            }
+//
+//            videoView.setVideoPath(videoPath)
+//            videoView.start()
 
-            videoView.setVideoPath(videoPath)
-            videoView.start()
+            TexturePlayActivity.startPlay(this, videoPath!!)
         }
 
         videoView.setOnCompletionListener {

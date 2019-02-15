@@ -8,6 +8,7 @@ import com.religion76.library.MediaInfo
 import com.religion76.library.codec.MediaCodecCallback
 import com.religion76.library.codec.VideoDecoderSync2
 import com.religion76.library.codec.VideoEncoderCompat
+import com.religion76.library.gles.CodecOutputSurface2
 import com.religion76.library.gles.InputSurface
 import com.religion76.library.gles.OutputSurface
 import java.lang.Exception
@@ -41,8 +42,6 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
     private var scaleWidth: Int? = null
     private var scaleHeight: Int? = null
 
-    private var isRotate = false
-
     private var callback: MediaExecuteCallback? = null
     private var callbackHandler: Handler? = null
 
@@ -70,10 +69,6 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
         AppLogger.d(TAG, "setting bitrate:$bitrate")
     }
 
-    fun setRotate(rotate: Boolean) {
-        this.isRotate = rotate
-    }
-
     fun prepare(trackFormat: MediaFormat): Boolean {
 
         mediaInfo = MediaInfo.getMediaInfo(path)
@@ -84,6 +79,10 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
         if (scaleWidth != null && scaleHeight != null) {
             mediaInfo.setScale(scaleWidth!!, scaleHeight!!)
         }
+
+//        val rotation = mediaInfo.getRotation()
+
+//        isRotate = rotation == 90 || rotation == 270
 
         isPrepared = initEncoder(trackFormat) && initDecoder(trackFormat)
 
@@ -99,6 +98,10 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
         videoDecoder = VideoDecoderSync2()
 
         outputSurface = OutputSurface()
+
+        //compatible setting,codec not support rotation format before android 21
+        mediaFormat.setInteger("rotation", 0)
+        mediaFormat.setInteger("rotation-degrees", 0)
 
         if (!videoDecoder!!.prepare(mediaFormat, mediaExtractor, outputSurface!!.surface)) {
             return false
@@ -196,8 +199,8 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
         return true
     }
 
-    private fun prepareMuxer(mediaFormat: MediaFormat, encoder: MediaCodec){
-        if (muxTrackIndex >= 0){
+    private fun prepareMuxer(mediaFormat: MediaFormat, encoder: MediaCodec) {
+        if (muxTrackIndex >= 0) {
             return
         }
 
@@ -226,13 +229,16 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
     }
 
     private fun buildEncodeOutputMediaFormat(inputFormat: MediaFormat, mediaInfo: MediaInfo?, bitRate: Int?): MediaFormat {
-        val rotate = mediaInfo?.getRotation() ?: 0
+//        val rotate = mediaInfo?.getRotation() ?: 0
+//
+//        val originWidth = mediaInfo?.getWidth() ?: inputFormat.getInteger(MediaFormat.KEY_WIDTH)
+//        val originHeight = mediaInfo?.getHeight() ?: inputFormat.getInteger(MediaFormat.KEY_HEIGHT)
+//
+//        val width = if (rotate == 90 || rotate == 270) originHeight else originWidth
+//        val height = if (rotate == 90 || rotate == 270) originWidth else originHeight
 
-        val originWidth = mediaInfo?.getWidth() ?: inputFormat.getInteger(MediaFormat.KEY_WIDTH)
-        val originHeight = mediaInfo?.getHeight() ?: inputFormat.getInteger(MediaFormat.KEY_HEIGHT)
-
-        val width = if (rotate == 90 || rotate == 270) originHeight else originWidth
-        val height = if (rotate == 90 || rotate == 270) originWidth else originHeight
+        val width = mediaInfo?.getWidth() ?: inputFormat.getInteger(MediaFormat.KEY_WIDTH)
+        val height = mediaInfo?.getHeight() ?: inputFormat.getInteger(MediaFormat.KEY_HEIGHT)
 
         val mediaFormat = MediaFormat.createVideoFormat("video/avc", width, height)
 
