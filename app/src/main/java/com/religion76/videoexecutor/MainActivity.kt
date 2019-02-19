@@ -10,6 +10,7 @@ import android.os.Environment
 import android.view.View
 import android.widget.Toast
 import com.religion76.library.AppLogger
+import com.religion76.library.MediaInfo
 import com.religion76.library.v2.VideoAudioCoder
 import com.sw926.imagefileselector.PermissionsHelper
 import kotlinx.android.synthetic.main.activity_main.*
@@ -47,17 +48,19 @@ class MainActivity : Activity() {
                 return@setOnClickListener
             }
 
-            coder = VideoAudioCoder(videoPath!!, ENCODE_DEST_PATH + "aaa_aaa.mp4")
-
+            coder = VideoAudioCoder(videoPath!!, ENCODE_DEST_PATH + "bbb.mp4")
             coder!!.setWithAudio(false)
 
-//            coder!!.withScale(720, 480)
-//            coder!!.withTrim(5000)
+            coder!!.withScale(480, 720)
+            coder!!.withTrim(5000)
 
             coder!!.setCallback(object : VideoAudioCoder.ResultCallback {
                 override fun onSucceed() {
                     Toast.makeText(this@MainActivity, "compress succeed QvQ", Toast.LENGTH_SHORT).show()
                     pbExecute.visibility = View.GONE
+
+                    val mediaInfo = MediaInfo.getMediaInfo(ENCODE_DEST_PATH + "bbb.mp4")
+                    AppLogger.d("ddd", "output video format: $mediaInfo")
                 }
 
                 override fun onFailed(errorMessage: String) {
@@ -90,6 +93,7 @@ class MainActivity : Activity() {
             videoView.suspend()
         }
 
+        videoPath = ENCODE_DEST_PATH + "aaa_aaacc.mp4"
 
         val destFile = File(ENCODE_DEST_PATH)
         if (!destFile.exists()) {

@@ -167,5 +167,6 @@ class MediaCodecCompat(val codec: MediaCodec) {
     fun release() {
         codec.stop()
         codec.release()
+        handler = null
     }
 }

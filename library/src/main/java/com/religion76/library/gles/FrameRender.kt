@@ -41,7 +41,6 @@ class FrameRender {
 
         encodeInputSurface.makeCurrent()
 
-
         if (rotateDegree > 0) {
             decodeOutputSurface.drawImage(false, rotateDegree)
         } else {

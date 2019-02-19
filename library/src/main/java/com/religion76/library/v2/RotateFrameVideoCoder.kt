@@ -189,7 +189,9 @@ class RotateFrameVideoCoder(private val path: String, private val mediaMuxer: Me
 
         })
 
-        val surface = videoEncoder!!.configure(mediaFormat, buildEncodeOutputMediaFormat(mediaFormat, mediaInfo, bitrate)) ?: return false
+        val surface = videoEncoder!!.configure(mediaFormat.getString(MediaFormat.KEY_MIME), buildEncodeOutputMediaFormat(mediaFormat, mediaInfo, bitrate)) ?: return false
+
+        videoEncoder?.start()
 
         //todo try catch error when device not support egl
         frameRender = FrameRender()
@@ -247,7 +249,7 @@ class RotateFrameVideoCoder(private val path: String, private val mediaMuxer: Me
             return
         }
 
-        videoEncoder!!.start()
+//        videoEncoder!!.start()
         videoDecoder!!.start()
 
         while (true) {
