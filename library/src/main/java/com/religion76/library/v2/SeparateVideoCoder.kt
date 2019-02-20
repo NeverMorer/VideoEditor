@@ -280,6 +280,8 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
                 break
             }
         }
+
+
     }
 
     private fun releaseEncoder() {

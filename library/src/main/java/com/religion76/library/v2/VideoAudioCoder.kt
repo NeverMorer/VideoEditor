@@ -6,6 +6,8 @@ import android.media.MediaMuxer
 import android.os.Handler
 import android.os.Looper
 import com.religion76.library.AppLogger
+import java.util.concurrent.locks.Lock
+import java.util.concurrent.locks.ReadWriteLock
 import kotlin.Exception
 
 /**
@@ -44,6 +46,8 @@ class VideoAudioCoder(private val srcPath: String, private val dest: String) : R
 
     private var withAudio = true
 
+    private var compeleteSyncObj = java.lang.Object()
+
     override fun run() {
         if (prepare()) {
 
@@ -61,45 +65,58 @@ class VideoAudioCoder(private val srcPath: String, private val dest: String) : R
                     }
 
                     callback?.let {
-                        val handler = callbackHandler ?: Handler(Looper.getMainLooper())
-                        handler.post {
+                        callbackHandler?.post {
                             it.onSucceed()
-                        }
+                        } ?: it.onSucceed()
                     }
 
+                    compeleteSyncObj.notifyAll()
                     release()
                 }
 
                 override fun onError(t: Throwable) {
                     release()
                     callback?.let {
-                        val handler = callbackHandler ?: Handler(Looper.getMainLooper())
-                        handler.post {
+                        callbackHandler?.post {
                             it.onFailed("video execute failed...")
-                        }
+                        } ?: it.onFailed("video execute failed...")
                     }
                 }
             })
 
             executeVideo()
 
+            synchronized(compeleteSyncObj) {
+                AppLogger.d("ddd", "start wait ...")
+                compeleteSyncObj.wait(30 * 1000)
+                AppLogger.d("ddd", "end wait ...")
+            }
+
         } else {
             callback?.let {
-                val handler = callbackHandler ?: Handler(Looper.getMainLooper())
-                handler.post {
+                callbackHandler?.post {
                     it.onFailed("codec prepare error...")
-                    release()
-                }
+                } ?: it.onFailed("codec prepare error...")
             }
         }
     }
 
-    fun startAsync(){
+    fun startAsync() {
         Thread(this).start()
     }
 
-    fun startSync(){
-        run()
+    //make sure executing thread not a Looper Thread
+    fun startSync() {
+        if (Looper.myLooper() != null) {
+            if (callbackHandler == null) {
+                callbackHandler = Handler(Looper.myLooper())
+            }
+            val t = Thread(this)
+            t.start()
+            t.join()
+        } else {
+            run()
+        }
     }
 
     private fun executeVideo() {
@@ -156,7 +173,6 @@ class VideoAudioCoder(private val srcPath: String, private val dest: String) : R
 
         mediaExtractor = MediaExtractor()
         mediaExtractor.setDataSource(srcPath)
-
 
         for (i in 0 until mediaExtractor.trackCount) {
             val trackFormat = mediaExtractor.getTrackFormat(i)
