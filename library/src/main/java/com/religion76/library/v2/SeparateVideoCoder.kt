@@ -105,15 +105,20 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
         }
 
         videoDecoder!!.onOutputBufferGenerate = { bufferInfo ->
-            lastFrameTimeTemp = bufferInfo.presentationTimeUs
 
-            if (inputSurface != null && outputSurface != null) {
+            if (endMs != null && lastFrameTimeTemp > endMs!! * 1000) {
+                videoDecoder!!.isDecodeFinish = true
+            } else {
+                lastFrameTimeTemp = bufferInfo.presentationTimeUs
 
-                outputSurface!!.awaitNewImage()
-                outputSurface!!.drawImage(false)
+                if (inputSurface != null && outputSurface != null) {
 
-                inputSurface!!.setPresentationTime(bufferInfo.presentationTimeUs * 1000)
-                inputSurface!!.swapBuffers()
+                    outputSurface!!.awaitNewImage()
+                    outputSurface!!.drawImage(false)
+
+                    inputSurface!!.setPresentationTime(bufferInfo.presentationTimeUs * 1000)
+                    inputSurface!!.swapBuffers()
+                }
             }
         }
 

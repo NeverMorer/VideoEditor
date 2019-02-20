@@ -126,6 +126,7 @@ class VideoDecoderSync2 {
         }
 
         return if (isDecodeFinish) {
+            onDecodeFinish?.invoke()
             false
         } else {
             val bufferInfo = MediaCodec.BufferInfo()
@@ -158,7 +159,6 @@ class VideoDecoderSync2 {
                     } else {
                         Log.d(TAG, "=== decoder end of stream ===")
                         isDecodeFinish = true
-                        onDecodeFinish?.invoke()
                     }
                 }
             }
