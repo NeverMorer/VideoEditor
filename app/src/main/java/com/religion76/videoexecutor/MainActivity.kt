@@ -3,9 +3,8 @@ package com.religion76.videoexecutor
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
-import android.os.Build
-import android.os.Bundle
-import android.os.Environment
+import android.os.*
+import android.support.annotation.MainThread
 
 import android.view.View
 import android.widget.Toast
@@ -68,7 +67,7 @@ class MainActivity : Activity() {
                     pbExecute.visibility = View.GONE
                     AppLogger.d("ddd", "video exc onFailed:$errorMessage")
                 }
-            })
+            }, Handler(Looper.getMainLooper()))
 
             coder!!.startAsync()
             pbExecute.visibility = View.VISIBLE
