@@ -4,7 +4,7 @@ import android.media.MediaCodec
 import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
-import android.util.Log
+import com.religion76.library.AppLogger
 import java.nio.ByteBuffer
 
 /**
@@ -126,27 +126,27 @@ class MediaCodecCompat(val codec: MediaCodec) {
 
         val outputBufferIndex = codec.dequeueOutputBuffer(bufferInfo, TIME_OUT)
         if (outputBufferIndex >= 0) {
-            Log.d(TAG, "encoder output data index:$outputBufferIndex")
+            AppLogger.d(TAG, "encoder output data index:$outputBufferIndex")
             when {
                 outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER -> {
-                    Log.d(TAG, "encoder output try again later")
+                    AppLogger.d(TAG, "encoder output try again later")
                     return
                 }
 
                 outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                    Log.d(TAG, "encoder output format changed")
+                    AppLogger.d(TAG, "encoder output format changed")
                     callbackHandler?.post {
                         callback?.onOutputFormatChanged(codec, codec.outputFormat)
                     } ?: callback?.onOutputFormatChanged(codec, codec.outputFormat)
                 }
 
                 outputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED -> {
-                    Log.d(TAG, "encoder output buffers changed")
+                    AppLogger.d(TAG, "encoder output buffers changed")
                     outputBuffers = codec.outputBuffers
                 }
 
                 bufferInfo.flags.and(MediaCodec.BUFFER_FLAG_END_OF_STREAM) == 0 -> {
-                    Log.d(TAG, "encoder buffer output ")
+                    AppLogger.d(TAG, "encoder buffer output ")
                     callbackHandler?.post {
                         callback?.onOutputBufferAvailable(codec, outputBufferIndex, bufferInfo, outputBuffers[outputBufferIndex])
                     }
@@ -156,7 +156,7 @@ class MediaCodecCompat(val codec: MediaCodec) {
                 }
 
                 else -> {
-                    Log.d(TAG, "=== encoder buffer end of stream ===")
+                    AppLogger.d(TAG, "=== encoder buffer end of stream ===")
                     handler?.sendEmptyMessage(MSG_END)
                     return
                 }
@@ -167,6 +167,7 @@ class MediaCodecCompat(val codec: MediaCodec) {
     fun release() {
         codec.stop()
         codec.release()
+        isStop = true
         handler = null
     }
 }

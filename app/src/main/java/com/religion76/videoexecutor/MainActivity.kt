@@ -52,7 +52,7 @@ class MainActivity : Activity() {
             coder!!.setWithAudio(false)
 
             coder!!.withScale(480, 720)
-            coder!!.withTrim(5000)
+            coder!!.withTrim(3000, 6000)
 
             coder!!.setCallback(object : VideoAudioCoder.ResultCallback {
                 override fun onSucceed() {
@@ -70,7 +70,7 @@ class MainActivity : Activity() {
                 }
             })
 
-            Thread(coder!!).start()
+            coder!!.startAsync()
             pbExecute.visibility = View.VISIBLE
         }
 
@@ -92,8 +92,6 @@ class MainActivity : Activity() {
         videoView.setOnCompletionListener {
             videoView.suspend()
         }
-
-        videoPath = ENCODE_DEST_PATH + "aaa_aaacc.mp4"
 
         val destFile = File(ENCODE_DEST_PATH)
         if (!destFile.exists()) {

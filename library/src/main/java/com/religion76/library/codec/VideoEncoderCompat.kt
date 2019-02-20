@@ -1,7 +1,7 @@
 package com.religion76.library.codec
 
+import android.annotation.TargetApi
 import android.media.MediaCodec
-import android.media.MediaCodecInfo
 import android.media.MediaCodecList
 import android.media.MediaFormat
 import android.os.Build
@@ -23,14 +23,30 @@ class VideoEncoderCompat(private val callback: MediaCodecCallback) {
 
     private var encoderCompat: MediaCodecCompat? = null
 
-    var handler: Handler? = null
+    private var handler: Handler? = null
+        @TargetApi(Build.VERSION_CODES.M)
+        set(value) {
+            field = value
+        }
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     private fun findEncoder(mediaFormat: MediaFormat): MediaCodec? {
+        //save frame rate
+        var frameRate = MediaInfo.FRAME_RATE
+
+        try {
+            frameRate = mediaFormat.getInteger(MediaFormat.KEY_FRAME_RATE)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
         mediaFormat.setString(MediaFormat.KEY_FRAME_RATE, null)
         val codecName = MediaCodecList(0).findEncoderForFormat(mediaFormat)
         if (!codecName.isNullOrEmpty()) {
-            return MediaCodec.createByCodecName(codecName)
+            val codec = MediaCodec.createByCodecName(codecName)
+            //restore frame rate
+            mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, frameRate)
+            return codec
         }
 
         return null
@@ -51,19 +67,8 @@ class VideoEncoderCompat(private val callback: MediaCodecCallback) {
 
     private fun initCodec(videoMime: String, outputFormat: MediaFormat) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-//            save frame rate
-            var frameRate = MediaInfo.FRAME_RATE
-
-            try {
-                frameRate = outputFormat.getInteger(MediaFormat.KEY_FRAME_RATE)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
 
             encoder = findEncoder(outputFormat)
-
-            //restore frame rate
-            outputFormat.setInteger(MediaFormat.KEY_FRAME_RATE, frameRate)
 
             val callback = object : MediaCodec.Callback() {
                 override fun onOutputBufferAvailable(codec: MediaCodec, index: Int, info: MediaCodec.BufferInfo) {

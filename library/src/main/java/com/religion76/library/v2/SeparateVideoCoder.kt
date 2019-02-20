@@ -75,9 +75,6 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
         AppLogger.d(TAG, "original bitrate:${mediaInfo.getBitrate()}")
         AppLogger.d(TAG, "original rotation:${mediaInfo.getRotation()}")
 
-//        val rotation = mediaInfo.getRotation()
-//        isRotate = rotation == 90 || rotation == 270
-
         if (scaleWidth != null && scaleHeight != null) {
             mediaInfo.setScale(scaleWidth!!, scaleHeight!!)
         }
@@ -85,8 +82,6 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
         mediaMuxer.setOrientationHint(mediaInfo.getRotation())
 
         isPrepared = initEncoder(trackFormat) && initDecoder(trackFormat)
-
-        AppLogger.d("ddd", "encoder configured output_format2: ${videoEncoder?.getOutputFormat()}")
 
         return isPrepared
     }
