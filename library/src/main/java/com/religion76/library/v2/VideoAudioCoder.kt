@@ -6,15 +6,13 @@ import android.media.MediaMuxer
 import android.os.Handler
 import android.os.Looper
 import com.religion76.library.AppLogger
-import java.util.concurrent.locks.Lock
-import java.util.concurrent.locks.ReadWriteLock
 import kotlin.Exception
 
 /**
  * Created by SunChao
  * on 2018/5/24.
  */
-class VideoAudioCoder(private val srcPath: String, private val dest: String) : Runnable {
+class VideoAudioCoder(private val srcPath: String, private val dest: String) {
 
     companion object {
         const val TAG = "VideoAudioCoder"
@@ -46,10 +44,14 @@ class VideoAudioCoder(private val srcPath: String, private val dest: String) : R
 
     private var withAudio = true
 
+    private var isSyncMode = false
+
     private var compeleteSyncObj = java.lang.Object()
 
-    override fun run() {
+    private fun execute(): Boolean {
         if (prepare()) {
+
+            var isSucceed = false
 
             videoCoder.setCallback(object : MediaExecuteCallback {
                 override fun onMediaTrackReady() {
@@ -64,22 +66,38 @@ class VideoAudioCoder(private val srcPath: String, private val dest: String) : R
                         executeAudio()
                     }
 
-                    callback?.let {
-                        callbackHandler?.post {
-                            it.onSucceed()
-                        } ?: it.onSucceed()
-                    }
-
-                    compeleteSyncObj.notifyAll()
                     release()
+
+                    if (isSyncMode) {
+                        isSucceed = true
+
+                        synchronized(compeleteSyncObj) {
+                            compeleteSyncObj.notifyAll()
+                        }
+                    } else {
+                        callback?.let {
+                            callbackHandler?.post {
+                                it.onSucceed()
+                            } ?: it.onSucceed()
+                        }
+                    }
                 }
 
                 override fun onError(t: Throwable) {
                     release()
-                    callback?.let {
-                        callbackHandler?.post {
-                            it.onFailed("video execute failed...")
-                        } ?: it.onFailed("video execute failed...")
+
+                    if (isSyncMode) {
+                        synchronized(compeleteSyncObj) {
+                            compeleteSyncObj.notifyAll()
+                        }
+                    } else {
+                        isSucceed = false
+
+                        callback?.let {
+                            callbackHandler?.post {
+                                it.onFailed("video execute failed...")
+                            } ?: it.onFailed("video execute failed...")
+                        }
                     }
                 }
             })
@@ -92,31 +110,48 @@ class VideoAudioCoder(private val srcPath: String, private val dest: String) : R
                 AppLogger.d("ddd", "end wait ...")
             }
 
+            return isSucceed
+
         } else {
-            callback?.let {
-                callbackHandler?.post {
-                    it.onFailed("codec prepare error...")
-                } ?: it.onFailed("codec prepare error...")
+            if (isSyncMode) {
+                return false
+            } else {
+                callback?.let {
+                    callbackHandler?.post {
+                        it.onFailed("codec prepare error...")
+                    } ?: it.onFailed("codec prepare error...")
+                }
             }
         }
+
+        return false
     }
 
     fun startAsync() {
-        Thread(this).start()
+        Thread {
+            execute()
+        }.start()
     }
 
     //make sure executing thread not a Looper Thread
-    fun startSync() {
+    fun startSync(): Boolean {
+        isSyncMode = true
+        var executeResult = false
+
         if (Looper.myLooper() != null) {
             if (callbackHandler == null) {
                 callbackHandler = Handler(Looper.myLooper())
             }
-            val t = Thread(this)
+            val t = Thread {
+                executeResult = execute()
+            }
             t.start()
             t.join()
         } else {
-            run()
+            executeResult = execute()
         }
+
+        return executeResult
     }
 
     private fun executeVideo() {
