@@ -1,6 +1,7 @@
 package com.religion76.library.v2
 
 import android.media.*
+import android.os.Build
 import android.os.Handler
 import android.util.Log
 import com.religion76.library.AppLogger
@@ -85,8 +86,6 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
             mediaInfo.setScale(scaleWidth!!, scaleHeight!!)
         }
 
-//        mediaMuxer.setOrientationHint(mediaInfo.getRotation())
-
         isPrepared = initEncoder(trackFormat) && initDecoder(trackFormat)
 
         return isPrepared
@@ -102,15 +101,29 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
 
         outputSurface = CodecOutputSurface2()
 
-        val rotation = mediaInfo.getRotation()
-        val isNeedRotateFrame = isRotateFrame && (rotation == 90 || rotation == 270)
-
-        //compatible setting,codec not support rotation format before android 21
-        mediaFormat.setInteger("rotation", 0)
-        mediaFormat.setInteger("rotation-degrees", 0)
-
         if (!videoDecoder!!.prepare(mediaFormat, mediaExtractor, outputSurface!!.surface)) {
             return false
+        }
+
+        val rotate = mediaInfo.getRotation()
+        val isNeedRotate = rotate == 90 || rotate == 270
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            var supportRotationDegrees: Int = -1
+            try {
+                supportRotationDegrees = mediaFormat.getInteger(MediaFormat.KEY_ROTATION)
+            } catch (e: Exception) {
+                AppLogger.d("ddd", "supportRotationDegrees not found")
+            }
+
+            AppLogger.d("ddd", "rotate: $rotate, rotateDegrees: $supportRotationDegrees")
+
+            //make up support rotation_degrees
+            if (rotate > 0 && rotate != supportRotationDegrees) {
+                mediaFormat.setInteger(MediaFormat.KEY_ROTATION, rotate)
+            }
+        } else if (isNeedRotate) {
+            mediaMuxer.setOrientationHint(rotate)
         }
 
         videoDecoder!!.onOutputBufferGenerate = { bufferInfo ->
@@ -123,11 +136,13 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
                 if (inputSurface != null && outputSurface != null) {
 
                     outputSurface!!.awaitNewImage()
-                    if (isNeedRotateFrame) {
-                        outputSurface!!.drawImage(false, 90)
-                    } else {
-                        outputSurface!!.drawImage(false)
-                    }
+                    outputSurface!!.drawImage(false)
+//                    if (isNeedRotateFrame) {
+////                        outputSurface!!.drawImage(false, 90)
+//                        outputSurface!!.drawImage(false)
+//                    } else {
+//                        outputSurface!!.drawImage(false)
+//                    }
 
                     inputSurface!!.setPresentationTime(bufferInfo.presentationTimeUs * 1000)
                     inputSurface!!.swapBuffers()
@@ -241,17 +256,21 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
     private fun buildEncodeOutputMediaFormat(inputFormat: MediaFormat, mediaInfo: MediaInfo?, bitRate: Int?): MediaFormat {
 
         val rotate = mediaInfo?.getRotation() ?: 0
+        val isNeedRotate = rotate == 90 || rotate == 270
 
         val originWidth = mediaInfo?.getWidth() ?: inputFormat.getInteger(MediaFormat.KEY_WIDTH)
         val originHeight = mediaInfo?.getHeight() ?: inputFormat.getInteger(MediaFormat.KEY_HEIGHT)
 
-        val width = if (rotate == 90 || rotate == 270) originHeight else originWidth
-        val height = if (rotate == 90 || rotate == 270) originWidth else originHeight
+        var width = originWidth
+        var height = originHeight
 
-//        val width = mediaInfo?.getWidth() ?: inputFormat.getInteger(MediaFormat.KEY_WIDTH)
-//        val height = mediaInfo?.getHeight() ?: inputFormat.getInteger(MediaFormat.KEY_HEIGHT)
 
-        AppLogger.d("ddd", "info width: ${mediaInfo?.getWidth()}, height: ${mediaInfo?.getHeight()}")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && isNeedRotate) {
+            width = originHeight
+            height = originWidth
+        }
+
+        AppLogger.d("ddd", "output_format width: $width, height: $height")
 
         val mediaFormat = MediaFormat.createVideoFormat("video/avc", width, height)
 

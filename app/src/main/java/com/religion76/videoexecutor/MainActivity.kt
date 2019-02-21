@@ -49,12 +49,16 @@ class MainActivity : Activity() {
 
             val mediaInfo = MediaInfo.getMediaInfo(videoPath!!)
 
-            AppLogger.d("ddd", "info width: ${mediaInfo.getWidth()}, height: ${mediaInfo.getHeight()}")
+            AppLogger.d("ddd", "origin video info: $mediaInfo")
 
             coder = VideoAudioCoder(videoPath!!, ENCODE_DEST_PATH + "bbb.mp4")
             coder!!.setWithAudio(false)
 
-            coder!!.withScale(480, 720)
+            val isWidthBig = mediaInfo.getWidth() > mediaInfo.getHeight()
+            val scaleWidth = if (isWidthBig) 720 else 480
+            val scaleHeight = if (isWidthBig) 480 else 720
+
+            coder!!.withScale(scaleWidth, scaleHeight)
             coder!!.withTrim(3000, 6000)
             coder!!.withRotateFrame()
 
