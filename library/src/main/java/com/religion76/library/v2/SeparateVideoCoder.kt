@@ -186,15 +186,20 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
                         } else {
                             videoEncoder?.getOutputBuffer(index)?.let { outputBuffer ->
 
-                                //todo fix bug
+                                AppLogger.d(TAG, "startMs: $startMs, buffer_time: ${info.presentationTimeUs}")
+
                                 if (startMs != null) {
                                     val startTimeUs = startMs!! * 1000
                                     if (info.presentationTimeUs >= startTimeUs) {
                                         info.presentationTimeUs = info.presentationTimeUs - startTimeUs
+                                        mediaMuxer.writeSampleData(muxTrackIndex, outputBuffer, info)
+                                    }else if (info.presentationTimeUs == 0L){
+                                        //key frame buffer, must to write
+                                        mediaMuxer.writeSampleData(muxTrackIndex, outputBuffer, info)
                                     }
+                                } else {
+                                    mediaMuxer.writeSampleData(muxTrackIndex, outputBuffer, info)
                                 }
-
-                                mediaMuxer.writeSampleData(muxTrackIndex, outputBuffer, info)
                             }
                         }
                     }
