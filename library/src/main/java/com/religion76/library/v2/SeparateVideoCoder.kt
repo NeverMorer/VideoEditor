@@ -40,6 +40,8 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
     private var scaleWidth: Int? = null
     private var scaleHeight: Int? = null
 
+    private var isRotateFrame: Boolean = false
+
     private var callback: MediaExecuteCallback? = null
     private var callbackHandler: Handler? = null
 
@@ -67,6 +69,10 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
         AppLogger.d(TAG, "setting bitrate:$bitrate")
     }
 
+    fun setRotateFrame(rotate: Boolean) {
+        isRotateFrame = rotate
+    }
+
     fun prepare(trackFormat: MediaFormat): Boolean {
 
         mediaInfo = MediaInfo.getMediaInfo(path)
@@ -79,7 +85,7 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
             mediaInfo.setScale(scaleWidth!!, scaleHeight!!)
         }
 
-        mediaMuxer.setOrientationHint(mediaInfo.getRotation())
+//        mediaMuxer.setOrientationHint(mediaInfo.getRotation())
 
         isPrepared = initEncoder(trackFormat) && initDecoder(trackFormat)
 
@@ -95,6 +101,9 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
         videoDecoder = VideoDecoderSync2()
 
         outputSurface = CodecOutputSurface2()
+
+        val rotation = mediaInfo.getRotation()
+        val isNeedRotateFrame = isRotateFrame && (rotation == 90 || rotation == 270)
 
         //compatible setting,codec not support rotation format before android 21
         mediaFormat.setInteger("rotation", 0)
@@ -114,7 +123,11 @@ class SeparateVideoCoder(private val path: String, private val mediaMuxer: Media
                 if (inputSurface != null && outputSurface != null) {
 
                     outputSurface!!.awaitNewImage()
-                    outputSurface!!.drawImage(false)
+                    if (isNeedRotateFrame) {
+                        outputSurface!!.drawImage(false, 90)
+                    } else {
+                        outputSurface!!.drawImage(false)
+                    }
 
                     inputSurface!!.setPresentationTime(bufferInfo.presentationTimeUs * 1000)
                     inputSurface!!.swapBuffers()

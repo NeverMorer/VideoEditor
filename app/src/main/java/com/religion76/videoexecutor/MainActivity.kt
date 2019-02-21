@@ -47,11 +47,16 @@ class MainActivity : Activity() {
                 return@setOnClickListener
             }
 
+            val mediaInfo = MediaInfo.getMediaInfo(videoPath!!)
+
+            AppLogger.d("ddd", "info width: ${mediaInfo.getWidth()}, height: ${mediaInfo.getHeight()}")
+
             coder = VideoAudioCoder(videoPath!!, ENCODE_DEST_PATH + "bbb.mp4")
             coder!!.setWithAudio(false)
 
             coder!!.withScale(480, 720)
             coder!!.withTrim(3000, 6000)
+            coder!!.withRotateFrame()
 
             coder!!.setCallback(object : VideoAudioCoder.ResultCallback {
                 override fun onSucceed() {

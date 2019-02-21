@@ -34,6 +34,8 @@ class VideoAudioCoder(private val srcPath: String, private val dest: String) {
     private var scaleWidth: Int? = null
     private var scaleHeight: Int? = null
 
+    private var isRotateFrame: Boolean = false
+
     private var videoExtractTrackIndex = -1
     private var audioExtractTrackIndex = -1
 
@@ -190,6 +192,10 @@ class VideoAudioCoder(private val srcPath: String, private val dest: String) {
         AppLogger.d(TAG, "setting trim start:$startMs  end:$endMs")
     }
 
+    fun withRotateFrame(){
+        isRotateFrame = true
+    }
+
     fun setVideoBitrate(bitrate: Int) {
         this.bitrate = bitrate
         AppLogger.d(TAG, "setting bitrate:$bitrate")
@@ -242,6 +248,7 @@ class VideoAudioCoder(private val srcPath: String, private val dest: String) {
         videoCoder = SeparateVideoCoder(srcPath, mediaMuxer, mediaExtractor)
         videoCoder.withScale(scaleWidth, scaleHeight)
         videoCoder.withTrim(startMs, endMs)
+        videoCoder.setRotateFrame(isRotateFrame)
 //        videoCoder.setRotate(isRotate)
         bitrate?.let {
             videoCoder.setBitrate(it)
