@@ -71,21 +71,21 @@ class VideoDecoderSync2 {
 
             try {
                 frameRate = mediaFormat.getInteger(MediaFormat.KEY_FRAME_RATE)
-                mediaFormat.setString(MediaFormat.KEY_FRAME_RATE, null)
             } catch (e: Exception) {
                 Log.d(TAG, "origin source no frame_rate")
             }
 
-            decoder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                findDecoder(mediaFormat)
-                        ?: MediaCodec.createDecoderByType(mediaFormat.getString(MediaFormat.KEY_MIME))
-            } else {
-                MediaCodec.createDecoderByType(mediaFormat.getString(MediaFormat.KEY_MIME))
-            }
+//            decoder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+//                findDecoder(mediaFormat) ?: MediaCodec.createDecoderByType(mediaFormat.getString(MediaFormat.KEY_MIME))
+//            } else {
+//                MediaCodec.createDecoderByType(mediaFormat.getString(MediaFormat.KEY_MIME))
+//            }
+
+            decoder = MediaCodec.createDecoderByType(mediaFormat.getString(MediaFormat.KEY_MIME))
 
             AppLogger.d(TAG, "decoder ins: $decoder")
 
-            if (frameRate != null){
+            if (frameRate != null) {
                 //restore frame rate data
                 mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, frameRate)
             }
@@ -111,7 +111,8 @@ class VideoDecoderSync2 {
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     private fun findDecoder(mediaFormat: MediaFormat): MediaCodec? {
         mediaFormat.setString(MediaFormat.KEY_FRAME_RATE, null)
-        val codecName = MediaCodecList(1).findDecoderForFormat(mediaFormat)
+        val mediaCodecList = MediaCodecList(0)
+        val codecName = mediaCodecList.findDecoderForFormat(mediaFormat)
         if (!codecName.isNullOrEmpty()) {
             return MediaCodec.createByCodecName(codecName)
         }
