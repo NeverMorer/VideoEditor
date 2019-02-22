@@ -1,7 +1,7 @@
 ## VideoEditor
 A library for edit video without JNI base on **MediaCodec** farmework
 
-####Feature:
+#### Feature:
 * Compress video with specific bitrate
 * Scale video with specific width/height
 * Trim video with specific start/end time
