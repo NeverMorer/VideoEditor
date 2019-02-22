@@ -24,6 +24,7 @@ coder.setCallback(object : VideoAudioCoder.ResultCallback {
                   
     },
     Handler(Looper.getMainLooper()))
+}
 
 coder.startAsync()
 
