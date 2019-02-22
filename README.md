@@ -1,5 +1,7 @@
 ## VideoEditor
-A library for edit video without JNI base on **MediaCodec** farmework
+A library for edit video without JNI base on **MediaCodec** farmework on Android
+
+**Support Android 4.3+**
 
 #### Feature:
 * Compress video with specific bitrate
