@@ -192,10 +192,6 @@ class VideoAudioCoder(private val srcPath: String, private val dest: String) {
         AppLogger.d(TAG, "setting trim start:$startMs  end:$endMs")
     }
 
-    fun withRotateFrame(){
-        isRotateFrame = true
-    }
-
     fun setVideoBitrate(bitrate: Int) {
         this.bitrate = bitrate
         AppLogger.d(TAG, "setting bitrate:$bitrate")

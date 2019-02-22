@@ -11,11 +11,11 @@ A library for edit video without JNI base on **MediaCodec** farmework
 
 ``` kotlin
 coder = VideoAudioCoder(videoPath, destPath)
-coder.setWithAudio(false)
 
+coder.setWithAudio(false)
 coder.withScale(720, 480)
 coder.withTrim(3000, 6000)
-coder.withRotateFrame()
+
 coder.setCallback(object : VideoAudioCoder.ResultCallback {
     override fun onSucceed() {
          
